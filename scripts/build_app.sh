@@ -40,6 +40,15 @@ echo ""
 echo "🧹 清理旧构建文件..."
 rm -rf build dist *.spec
 
+# 检查图标文件
+if [ -f "Eason.icns" ]; then
+    ICON_OPTION="--icon=Eason.icns"
+    echo "✅ 使用自定义图标: Eason.icns"
+else
+    ICON_OPTION=""
+    echo "⚠️  未找到图标文件，使用默认图标"
+fi
+
 # 打包应用
 echo "🔨 开始打包..."
 echo "   这可能需要几分钟，请耐心等待..."
@@ -50,6 +59,7 @@ echo ""
             --name="Eason" \
             --windowed \
             --osx-bundle-identifier=com.eason.emailassistant \
+            ${ICON_OPTION} \
             email_assistant_gui.py
 
 # 检查结果
