@@ -1,22 +1,23 @@
 #!/bin/bash
 
-# 邮件助手打包脚本
-# Email Assistant Build Script
+# Eason 打包脚本
+# Eason Build Script
 
 set -e
 
-PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 VENV_DIR="$PROJECT_DIR/.venv"
 
 cd "$PROJECT_DIR"
 
-echo "📦 开始打包邮件助手应用..."
+echo "📦 开始打包 Eason 应用..."
 echo ""
 
 # 检查虚拟环境
 if [ ! -d "$VENV_DIR" ]; then
     echo "⚠️  未找到虚拟环境，正在创建..."
-    ./install.sh
+    "$PROJECT_DIR/scripts/install.sh"
     echo ""
 fi
 
@@ -27,7 +28,7 @@ if ! "$VENV_DIR/bin/python" -c "import PyQt6" 2>/dev/null; then
     "$VENV_DIR/bin/pip" install PyQt6
 fi
 
-if ! "$VENV_DIR/bin/python" -c "import Pyinstaller" 2>/dev/null; then
+if ! "$VENV_DIR/bin/pip" show pyinstaller > /dev/null 2>&1; then
     echo "⚠️  未找到 PyInstaller，正在安装..."
     "$VENV_DIR/bin/pip" install pyinstaller
 fi
@@ -41,34 +42,58 @@ rm -rf build dist *.spec
 
 # 打包应用
 echo "🔨 开始打包..."
+echo "   这可能需要几分钟，请耐心等待..."
+echo ""
+
 "$VENV_DIR/bin/pyinstaller" --noconsole \
-            --onefile \
-            --name="邮件助手" \
+            --onedir \
+            --name="Eason" \
             --windowed \
-            --osx-bundle-identifier=com.emailassistant.batchsender \
+            --osx-bundle-identifier=com.eason.emailassistant \
             email_assistant_gui.py
 
 # 检查结果
-if [ -f "dist/邮件助手.app/Contents/MacOS/邮件助手" ]; then
+if [ -d "dist/Eason.app" ]; then
     echo ""
-    echo "✅ 打包成功！"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  ✅ 打包成功！"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "📂 应用位置: dist/邮件助手.app"
+    echo "📂 应用位置:"
+    echo "   $PROJECT_DIR/dist/Eason.app"
     echo ""
-    echo "🚀 运行应用:"
-    echo "   open dist/邮件助手.app"
+    echo "📊 应用信息:"
+    APP_SIZE=$(du -sh "dist/Eason.app" | awk '{print $1}')
+    echo "   大小: $APP_SIZE"
     echo ""
-    echo "📦 分发应用:"
-    echo "   将 dist/邮件助手.app 复制到其他 Mac 即可使用"
+    echo "🚀 测试运行:"
+    echo "   open dist/Eason.app"
+    echo ""
+    echo "📦 分发方式:"
+    echo "   1. 直接复制 Eason.app 到其他 Mac"
+    echo "   2. 压缩: zip -r Eason.zip dist/Eason.app"
+    echo "   3. 上传到 GitHub Release 供用户下载"
+    echo ""
+    echo "⚠️  注意事项:"
+    echo "   • 首次运行可能需要在「系统偏好设置」→「安全性与隐私」中允许"
+    echo "   • 建议进行代码签名以避免安全警告"
     echo ""
     
-    # 询问是否打开应用
-    read -p "是否立即运行应用？(y/n) " -n 1 -r
+    # 询问是否立即运行应用
+    read -p "是否立即运行应用测试？(y/n) " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
-        open "dist/邮件助手.app"
+        echo "正在启动 Eason..."
+        open "dist/Eason.app"
     fi
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  🎉 打包完成！"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 else
-    echo "❌ 打包失败，请查看错误信息"
+    echo ""
+    echo "❌ 打包失败，请查看上面的错误信息"
+    echo ""
     exit 1
 fi

@@ -1,6 +1,10 @@
 # 📧 Eason - 邮件批量发送助手
 
-一个精美的 macOS 邮件批量发送工具，支持联系人采集和批量邮件发送。
+<div align="center">
+  <img src="./picture/cover/Gemini_Generated_Image_qifrgrqifrgrqifr.png" alt="Eason Cover" width="800"/>
+</div>
+
+一个精美的 macOS 邮件批量发送工具,支持联系人采集和批量邮件发送。
 
 ![Version](https://img.shields.io/badge/version-1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
@@ -247,6 +251,12 @@ MIT License
 ## 👨‍💻 作者
 
 开发者：Your Name
+
+---
+
+<div align="center">
+  <img src="./picture/cover/Gemini_Generated_Image_d15x2id15x2id15x.png" alt="Eason" width="800"/>
+</div>
 
 ---
 
