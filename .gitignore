@@ -1,0 +1,38 @@
+# 虚拟环境
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# 打包文件
+build/
+dist/
+*.egg-info/
+*.spec
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# 用户配置（包含敏感信息）
+config.ini
+*.log
+
+# 用户数据
+contacts.txt
+contacts.csv
+contacts_*.txt

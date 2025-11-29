@@ -7,12 +7,12 @@ from email.message import EmailMessage
 from getpass import getpass
 
 BATCH_SIZE = 10  # 👈 每批发送5封
-WAIT_TIME = 70   # 批次间隔秒数(建议大于60秒)
+WAIT_TIME = 20   # 批次间隔秒数(建议大于60秒)
 SERVER_TIMEOUT = 30  # 服务器超时时间
 success_count = 0  # 成功计数
 
-EMAIL_ADDRESS = input("请输入邮箱地址: ").strip()
-EMAIL_PASS=None
+EMAIL_ADDRESS = 'hbxlpx2025@163.com'
+EMAIL_PASS='WMNrEVZRvNfgKCpA'
 if EMAIL_PASS is None:
     # 绕开IDE的getpass显示问题
     print("请在此输入授权码 >>> ", end='', flush=True)  # 强制显示输入提示
@@ -26,22 +26,26 @@ if EMAIL_PASS is None:
 # 使用ssl模块的context加载系统允许的证书，在登录时进行验证
 context = ssl.create_default_context()
 
-with open(r'E:\desktop\助管工作\emailsending\emailcode\contacts.txt', 'r', encoding='utf-8') as f:
+with open(r'/Users/code/emailsending/emailcode/contacts.txt', 'r', encoding='utf-8') as f:
     contacts = [line.strip() for line in f if line.strip()]
 
-# contacts = ['1509853371@qq.com', '1245700643@qq.com']
-subject = "你好"
-body = "这是一个邮件发送测试，无需回复"
+#contacts = ['1509853371@qq.com', '']
+subject = "你好，腾讯会议海报"
+body = "请注意查收腾讯会议消息"
 # msg = EmailMessage()
 # msg['subject'] = subject  # 邮件标题
 # msg['From'] = EMAIL_ADDRESS  # 邮件发件人
 # msg['To'] = contacts  # 邮件的收件人
 # msg.set_content(body)  # 使用set_content()方法设置邮件的主体内容
 
-# 读取附件内容（在循环外只需一次读取，避免重复IO操作）
-filename = r'E:\图片\极乐迪斯科\海报.jpg'
-with open(filename, 'rb') as f:
-    filedata = f.read()  # 提前读取附件二进制数据
+file_paths = [
+    r'/Users/zhy/Pictures/讲座s.jpg',
+    # r'/Users/zhy/Pictures/会议4.jpg'
+]
+filedata = []
+for path in file_paths:
+    with open(path, 'rb') as f:
+        filedata.append(f.read())
 
 # 使用同一个SMTP连接批量发送（高效）
 for idx in range(0, len(contacts), BATCH_SIZE):
@@ -63,12 +67,16 @@ for idx in range(0, len(contacts), BATCH_SIZE):
                 msg.set_content(body)  # 正文内容
 
                 # 添加附件（复用已读取的filedata）
-                msg.add_attachment(
-                    filedata,
-                    maintype='image',
-                    subtype='jpeg',
-                    filename='海报.jpg'  # 可自定义显示的附件名
-                )
+		      
+                for data, path in zip(filedata, file_paths):
+                    filename = path.split('\\')[-1]
+                    msg.add_attachment(
+                        data,
+                        maintype='image',
+                        subtype='jpeg',
+                        filename=filename  # 可自定义显示的附件名
+                    )
+
                 try:
                     smtp.send_message(msg)
                     success_count += 1

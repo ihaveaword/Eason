@@ -6,7 +6,7 @@ import email.message
 from email import message_from_bytes
 from getpass import getpass
 
-def get_senders(max_emails, EMAIL_USER=None, EMAIL_PASS=None):
+def get_senders(max_emails, EMAIL_USER='hbxlpx2025@163.com', EMAIL_PASS='WMNrEVZRvNfgKCpA'):
     if EMAIL_USER is None:
         EMAIL_USER = input("请输入邮箱地址: ").strip()
     if EMAIL_PASS is None:
@@ -67,7 +67,7 @@ def get_senders(max_emails, EMAIL_USER=None, EMAIL_PASS=None):
         return senders
 
 if __name__ == "__main__":
-    senders = get_senders(max_emails=10)
+    senders = get_senders(max_emails=1000, EMAIL_USER='hbxlpx2025@163.com', EMAIL_PASS='WMNrEVZRvNfgKCpA')
     print(f"前{len(senders)}封邮件发件人：")
     for idx, sender in enumerate(senders, 1):
         print(f"{idx}. {sender}")
