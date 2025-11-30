@@ -70,7 +70,7 @@ echo ""
 # 创建 DMG
 create-dmg \
   --volname "Eason" \
-  --volicon "dist/Eason.app/Contents/Resources/icon-windowed.icns" \
+  --volicon "dist/Eason.app/Contents/Resources/Eason.icns" \
   --window-pos 200 120 \
   --window-size 600 400 \
   --icon-size 100 \
