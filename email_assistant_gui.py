@@ -23,24 +23,24 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSettings
 from PyQt6.QtGui import QFont, QIcon
 
-# --- 样式表 (macOS 风格美化) ---
+# --- 样式表 (macOS 风格美化 - 支持深色模式) ---
 STYLESHEET = """
 QMainWindow {
-    background-color: #f5f5f7;
+    background-color: palette(window);
 }
 QGroupBox {
     font-weight: 600;
-    border: 1px solid #d2d2d7;
+    border: 1px solid palette(mid);
     border-radius: 8px;
     margin-top: 8px;
     padding-top: 12px;
-    background-color: white;
+    background-color: palette(base);
 }
 QGroupBox::title {
     subcontrol-origin: margin;
     left: 12px;
     padding: 0 5px;
-    color: #1d1d1f;
+    color: palette(text);
 }
 QPushButton {
     background-color: #007AFF;
@@ -59,8 +59,8 @@ QPushButton:pressed {
     background-color: #004FC4;
 }
 QPushButton:disabled {
-    background-color: #c7c7cc;
-    color: #8e8e93;
+    background-color: palette(mid);
+    color: palette(disabled-text);
 }
 QPushButton#stopButton {
     background-color: #FF3B30;
@@ -75,20 +75,22 @@ QPushButton#secondaryButton:hover {
     background-color: #636366;
 }
 QLineEdit, QTextEdit, QSpinBox, QComboBox {
-    border: 1px solid #d2d2d7;
+    border: 1px solid palette(mid);
     border-radius: 6px;
     padding: 6px 8px;
-    background-color: white;
+    background-color: palette(base);
+    color: palette(text);
     selection-background-color: #007AFF;
 }
 QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QComboBox:focus {
     border: 2px solid #007AFF;
 }
 QProgressBar {
-    border: 1px solid #d2d2d7;
+    border: 1px solid palette(mid);
     border-radius: 6px;
     text-align: center;
-    background-color: #f5f5f7;
+    background-color: palette(window);
+    color: palette(text);
     height: 22px;
 }
 QProgressBar::chunk {
@@ -96,28 +98,28 @@ QProgressBar::chunk {
     border-radius: 5px;
 }
 QLabel {
-    color: #1d1d1f;
+    color: palette(text);
 }
 QTabWidget::pane {
-    border: 1px solid #d2d2d7;
+    border: 1px solid palette(mid);
     border-radius: 8px;
-    background-color: white;
+    background-color: palette(base);
     padding: 8px;
 }
 QTabBar::tab {
-    background-color: #e5e5ea;
-    color: #1d1d1f;
+    background-color: palette(button);
+    color: palette(text);
     padding: 8px 20px;
     margin-right: 4px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
 }
 QTabBar::tab:selected {
-    background-color: white;
+    background-color: palette(base);
     font-weight: 600;
 }
 QTabBar::tab:hover:!selected {
-    background-color: #d1d1d6;
+    background-color: palette(midlight);
 }
 """
 
