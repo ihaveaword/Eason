@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 0; padding: 40px; background-color: #fafafa;">
+    <table style="max-width: 500px; margin: 0 auto; background: white; border-radius: 15px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+        <tr>
+            <td style="text-align: center; font-size: 48px; padding-bottom: 20px;">📧</td>
+        </tr>
+        <tr>
+            <td>
+                <h1 style="text-align: center; color: #2196F3; margin: 0 0 20px 0; font-size: 24px;">{custom_1}</h1>
+                
+                <p style="margin: 0 0 20px 0; color: #333;">Hi <strong>{recipient_name}</strong>，</p>
+                
+                <p style="margin: 0 0 20px 0; color: #333; line-height: 1.6;">这是一封来自 <strong>{sender_company}</strong> 的重要通知。</p>
+                
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <p style="margin: 10px 0; color: #333;"><strong>📅 时间</strong>: {date}</p>
+                    <p style="margin: 10px 0; color: #333;"><strong>👤 发送人</strong>: {sender_name}</p>
+                    <p style="margin: 10px 0; color: #333;"><strong>💼 公司</strong>: {sender_company}</p>
+                </div>
+                
+                <p style="margin: 20px 0; color: #333; line-height: 1.6;">{custom_2}</p>
+                
+                <div style="margin: 30px 0; padding-top: 20px; border-top: 1px solid #e0e0e0; text-align: right; color: #666;">
+                    <p style="margin: 0;">{sender_name}</p>
+                    <p style="margin: 5px 0 0 0;">{sender_company}</p>
+                </div>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="font-family: 'Microsoft YaHei', Arial, sans-serif; margin: 0; padding: 20px; background-color: #f5f5f5;">
+    <table style="max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <!-- Header -->
+        <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 40px; text-align: center;">
+                <h1 style="margin: 0; font-size: 28px;">商务邀请</h1>
+                <p style="margin: 10px 0 0 0; font-size: 16px;">来自 {sender_company} 的诚挚邀请</p>
+            </td>
+        </tr>
+        
+        <!-- Content -->
+        <tr>
+            <td style="padding: 40px;">
+                <p style="margin: 0 0 20px 0; color: #333; line-height: 1.6;">尊敬的 <strong>{recipient_name}</strong>，</p>
+                
+                <p style="margin: 0 0 20px 0; color: #333; line-height: 1.6;">我是来自 <strong>{sender_company}</strong> 的 {sender_name}。</p>
+                
+                <div style="background: #fff3cd; padding: 20px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                    <p style="margin: 0 0 10px 0; color: #333; font-weight: bold;">诚挚邀请您参加我们的活动</p>
+                    <p style="margin: 5px 0; color: #666;">时间：{custom_1}</p>
+                    <p style="margin: 5px 0; color: #666;">地点：{custom_2}</p>
+                </div>
+                
+                <p style="margin: 20px 0; color: #333; line-height: 1.6;">我们期待与您见面，共同探讨合作机会。</p>
+                
+                <p style="margin: 20px 0; color: #333; line-height: 1.6;">此致<br>敬礼</p>
+                
+                <p style="margin: 0; color: #333;"><strong>{sender_name}</strong><br>{sender_company}</p>
+            </td>
+        </tr>
+        
+        <!-- Footer -->
+        <tr>
+            <td style="background: #f5f5f5; padding: 20px; text-align: center; color: #666; font-size: 12px;">
+                <p style="margin: 0;">发送时间：{date}</p>
+                <p style="margin: 10px 0 0 0;">© {sender_company} 版权所有</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

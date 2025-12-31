@@ -1,0 +1,23 @@
+{
+  "business": {
+    "name": "business",
+    "display_name": "商务邀请",
+    "description": "适合商务活动、会议邀请等正式场合",
+    "required_vars": ["sender_company"],
+    "optional_vars": ["custom_1", "custom_2", "custom_3"]
+  },
+  "newsletter": {
+    "name": "newsletter",
+    "display_name": "新闻通讯",
+    "description": "适合产品更新、新闻发布等场景",
+    "required_vars": ["sender_company"],
+    "optional_vars": ["custom_1", "custom_2", "custom_3"]
+  },
+  "simple": {
+    "name": "simple",
+    "display_name": "简洁通知",
+    "description": "适合通知、提醒等简单场景",
+    "required_vars": [],
+    "optional_vars": ["custom_1", "custom_2", "custom_3"]
+  }
+}

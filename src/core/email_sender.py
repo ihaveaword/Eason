@@ -1,10 +1,11 @@
 """
 邮件发送模块
-支持批量发送、附件、进度追踪
+支持批量发送、附件、进度追踪、HTML模板
 """
 import os
 import time
 import smtplib
+from datetime import datetime
 from email.message import EmailMessage
 from typing import List, Dict
 from PyQt6.QtCore import QThread, pyqtSignal
@@ -90,12 +91,37 @@ class EmailSender(QThread):
             self.finished_signal.emit(success_count, total_emails)
     
     def _build_email(self, recipient: str) -> EmailMessage:
-        """构建邮件"""
+        """构建邮件（支持HTML模板）"""
         msg = EmailMessage()
         msg['From'] = self.cfg['user']
         msg['To'] = recipient
         msg['Subject'] = self.cfg['subject']
-        msg.set_content(self.cfg['body'])
+        
+        # 判断是否使用HTML模板
+        if self.cfg.get('use_template', False):
+            try:
+                # 准备变量
+                variables = self._prepare_variables(recipient)
+                
+                # 渲染HTML
+                from ..templates import TemplateEngine
+                engine = TemplateEngine()
+                html_content = engine.render(
+                    self.cfg['template_name'], 
+                    variables
+                )
+                
+                # 设置多部分内容
+                msg.set_content(self.cfg.get('body', '纯文本备用内容'))
+                msg.add_alternative(html_content, subtype='html')
+                
+            except Exception as e:
+                # 模板渲染失败，降级为纯文本
+                self.log_signal.emit(f"⚠️ 模板渲染失败({recipient}): {e}，使用纯文本")
+                msg.set_content(self.cfg['body'])
+        else:
+            # 纯文本模式
+            msg.set_content(self.cfg['body'])
         
         # 添加附件
         for attachment_path in self.cfg.get('attachments', []):
@@ -103,6 +129,33 @@ class EmailSender(QThread):
                 self._add_attachment(msg, attachment_path)
         
         return msg
+    
+    def _prepare_variables(self, recipient: str) -> Dict:
+        """准备模板变量"""
+        # 提取收件人姓名（从邮箱@前面）
+        recipient_name = recipient.split('@')[0] if '@' in recipient else recipient
+        
+        return {
+            # 收件人
+            'recipient_email': recipient,
+            'recipient_name': recipient_name,
+            
+            # 发件人
+            'sender_name': self.cfg.get('sender_name', ''),
+            'sender_company': self.cfg.get('sender_company', ''),
+            'sender_email': self.cfg['user'],
+            
+            # 系统变量
+            'date': datetime.now().strftime('%Y年%m月%d日'),
+            'time': datetime.now().strftime('%H:%M'),
+            'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'year': str(datetime.now().year),
+            
+            # 自定义变量
+            'custom_1': self.cfg.get('custom_1', ''),
+            'custom_2': self.cfg.get('custom_2', ''),
+            'custom_3': self.cfg.get('custom_3', ''),
+        }
     
     def _add_attachment(self, msg: EmailMessage, filepath: str):
         """添加附件到邮件"""

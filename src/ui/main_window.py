@@ -9,7 +9,7 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QLineEdit, QPushButton, QTextEdit, 
     QTabWidget, QProgressBar, QFileDialog, QMessageBox, 
-    QSpinBox, QFormLayout, QGroupBox
+    QSpinBox, QFormLayout, QGroupBox, QCheckBox, QComboBox
 )
 from PyQt6.QtCore import QSettings
 from ..core import EmailSender, ContactFetcher, ConfigManager
@@ -124,6 +124,46 @@ class MainWindow(QMainWindow):
         self.subject_input = QLineEdit()
         self.subject_input.setPlaceholderText("例如: 重要通知")
         form_layout.addRow("📧 邮件主题:", self.subject_input)
+        
+        # HTML模板选项（新增）
+        h_template = QHBoxLayout()
+        self.use_template_checkbox = QCheckBox("使用HTML模板")
+        self.use_template_checkbox.stateChanged.connect(self.toggle_template_mode)
+        
+        self.template_combo = QComboBox()
+        self.template_combo.setEnabled(False)
+        self.template_combo.addItem("选择模板...", "")
+        # 加载模板列表
+        try:
+            from ..templates import TemplateEngine
+            engine = TemplateEngine()
+            templates = engine.list_templates()
+            for tpl in templates:
+                self.template_combo.addItem(
+                    f"{tpl['display_name']} - {tpl['description']}", 
+                    tpl['name']
+                )
+        except Exception:
+            pass
+        
+        self.btn_config_vars = QPushButton("⚙️ 配置变量")
+        self.btn_config_vars.setObjectName("secondaryButton")
+        self.btn_config_vars.setEnabled(False)
+        self.btn_config_vars.clicked.connect(self.config_template_variables)
+        
+        self.btn_preview = QPushButton("🔍 预览")
+        self.btn_preview.setObjectName("secondaryButton")
+        self.btn_preview.setEnabled(False)
+        self.btn_preview.clicked.connect(self.preview_template)
+        
+        h_template.addWidget(self.use_template_checkbox)
+        h_template.addWidget(self.template_combo, 1)
+        h_template.addWidget(self.btn_config_vars)
+        h_template.addWidget(self.btn_preview)
+        form_layout.addRow("🎨 邮件模板:", h_template)
+        
+        # 初始化模板变量
+        self.template_vars = {}
         
         self.body_input = QTextEdit()
         self.body_input.setPlaceholderText("请输入邮件正文内容...")
@@ -398,7 +438,11 @@ class MainWindow(QMainWindow):
             'body': body,
             'attachments': attachments,
             'batch_size': self.batch_size_spin.value(),
-            'interval': self.batch_interval_spin.value()
+            'interval': self.batch_interval_spin.value(),
+            # HTML模板配置
+            'use_template': self.use_template_checkbox.isChecked(),
+            'template_name': self.template_combo.currentData() or '',
+            **self.template_vars  # 合并模板变量
         }
 
         # UI 状态更新
@@ -442,6 +486,84 @@ class MainWindow(QMainWindow):
     def on_send_error(self, error_msg):
         self.log(f"❌ 严重错误: {error_msg}")
         QMessageBox.critical(self, "❌ 发送错误", f"发送过程出现严重错误:\n\n{error_msg}")
+    
+    def toggle_template_mode(self, state):
+        """切换模板模式"""
+        from PyQt6.QtCore import Qt
+        use_template = (state == Qt.CheckState.Checked.value)
+        
+        # 启用/禁用相关控件
+        self.template_combo.setEnabled(use_template)
+        self.btn_config_vars.setEnabled(use_template)
+        self.btn_preview.setEnabled(use_template)
+        
+        # 更新提示信息
+        if use_template:
+            self.body_input.setPlaceholderText("使用HTML模板时，此处内容作为纯文本备用...")
+        else:
+            self.body_input.setPlaceholderText("请输入邮件正文内容...")
+    
+    def config_template_variables(self):
+        """配置模板变量"""
+        from .variable_config_dialog import VariableConfigDialog
+        
+        # 获取当前模板的必填变量
+        template_name = self.template_combo.currentData()
+        required_vars = []
+        if template_name:
+            try:
+                from ..templates import TemplateEngine
+                engine = TemplateEngine()
+                templates = engine.list_templates()
+                for tpl in templates:
+                    if tpl['name'] == template_name:
+                        required_vars = tpl.get('required_vars', [])
+                        break
+            except Exception:
+                pass
+        
+        dialog = VariableConfigDialog(self.template_vars, required_vars, self)
+        if dialog.exec():
+            self.template_vars = dialog.get_variables()
+            QMessageBox.information(self, "✅ 配置成功", "模板变量配置已保存")
+    
+    def preview_template(self):
+        """预览模板"""
+        from .template_preview import TemplatePreviewDialog
+        
+        template_name = self.template_combo.currentData()
+        if not template_name:
+            QMessageBox.warning(self, "⚠️ 未选择模板", "请先选择一个模板")
+            return
+        
+        try:
+            from ..templates import TemplateEngine
+            from datetime import datetime
+            
+            engine = TemplateEngine()
+            
+            # 准备预览变量
+            preview_vars = {
+                'recipient_email': 'example@test.com',
+                'recipient_name': '张三',
+                'sender_name': self.template_vars.get('sender_name', '测试发件人'),
+                'sender_company': self.template_vars.get('sender_company', '测试公司'),
+                'sender_email': self.user_input.text(),
+                'date': datetime.now().strftime('%Y年%m月%d日'),
+                'time': datetime.now().strftime('%H:%M'),
+                'year': str(datetime.now().year),
+                'custom_1': self.template_vars.get('custom_1', '自定义内容1'),
+                'custom_2': self.template_vars.get('custom_2', '自定义内容2'),
+                'custom_3': self.template_vars.get('custom_3', '自定义内容3'),
+            }
+            
+            html_content = engine.render(template_name, preview_vars)
+            
+            dialog = TemplatePreviewDialog(html_content, self)
+            dialog.exec()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "❌ 预览失败", f"模板预览失败:\n\n{str(e)}")
 
 def main():
     app = QApplication(sys.argv)
