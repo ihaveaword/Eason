@@ -1,6 +1,7 @@
 """
 邮件发送模块
 支持批量发送、附件、进度追踪、HTML模板
+支持多种邮箱：163、126、QQ、Gmail、Outlook 等
 """
 import os
 import time
@@ -9,6 +10,7 @@ from datetime import datetime
 from email.message import EmailMessage
 from typing import List, Dict
 from PyQt6.QtCore import QThread, pyqtSignal
+from .email_config import get_smtp_server, get_smtp_port, use_starttls
 
 
 class EmailSender(QThread):
@@ -19,16 +21,38 @@ class EmailSender(QThread):
     finished_signal = pyqtSignal(int, int)  # success_count, total
     error_signal = pyqtSignal(str)
     
-    def __init__(self, config: Dict, contact_list: List[str], smtp_server: str = 'smtp.163.com'):
+    def __init__(self, config: Dict, contact_list: List[str], smtp_server: str = None):
         super().__init__()
         self.cfg = config
         self.contacts = contact_list
-        self.smtp_server = smtp_server
+        
+        # 自动检测邮箱服务器（如果未指定）
+        user_email = config.get('user', '')
+        if smtp_server:
+            self.smtp_server = smtp_server
+            self.smtp_port = 465
+            self.use_tls = False
+        else:
+            self.smtp_server = get_smtp_server(user_email)
+            self.smtp_port = get_smtp_port(user_email)
+            self.use_tls = use_starttls(user_email)
+        
         self.is_running = True
     
     def stop(self):
         """停止发送"""
         self.is_running = False
+    
+    def _connect_smtp(self):
+        """建立 SMTP 连接（支持 SSL 和 STARTTLS）"""
+        if self.use_tls:
+            # Outlook 等使用 STARTTLS
+            server = smtplib.SMTP(self.smtp_server, self.smtp_port, timeout=30)
+            server.starttls()
+        else:
+            # 163、QQ 等使用 SSL
+            server = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port, timeout=30)
+        return server
     
     def run(self):
         """执行发送任务"""
@@ -38,6 +62,9 @@ class EmailSender(QThread):
         
         success_count = 0
         failed_count = 0
+        
+        # 日志显示使用的服务器
+        self.log_signal.emit(f"📧 使用邮件服务器: {self.smtp_server}:{self.smtp_port}")
         
         try:
             for idx in range(0, total_emails, batch_size):
@@ -50,7 +77,7 @@ class EmailSender(QThread):
                 self.log_signal.emit(f"📦 批次 {batch_num}: 准备发送 {len(batch)} 封邮件...")
                 
                 try:
-                    with smtplib.SMTP_SSL(self.smtp_server, 465, timeout=30) as server:
+                    with self._connect_smtp() as server:
                         server.login(self.cfg['user'], self.cfg['pwd'])
                         self.log_signal.emit(f"🔐 批次 {batch_num} SMTP 登录成功")
                         

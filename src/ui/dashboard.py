@@ -13,17 +13,20 @@ class StatsCard(QFrame):
         
         # 统一样式，不再区分类型
         self.setObjectName("statsCard")
-        self.setMinimumHeight(100)
+        self.setMinimumHeight(110)
+        self.setMinimumWidth(140)
         
         layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(8)
+        layout.setContentsMargins(16, 16, 16, 16)
         
         # 标题
         title_label = QLabel(title)
         title_label.setObjectName("statLabel")
-        title_label.setWordWrap(True)
+        title_label.setWordWrap(False)
         layout.addWidget(title_label)
+        
+        layout.addSpacing(4)
         
         # 数值
         value_label = QLabel(value)
@@ -48,8 +51,8 @@ class Dashboard(QWidget):
         super().__init__()
         
         layout = QHBoxLayout(self)
-        layout.setSpacing(12)
-        layout.setContentsMargins(0, 0, 0, 20)
+        layout.setSpacing(16)
+        layout.setContentsMargins(0, 8, 0, 20)
         
         # 创建4个统计卡片
         self.total_card = StatsCard("总发送", "0")

@@ -22,8 +22,18 @@ from .dashboard import Dashboard
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("✨ Eason - 邮件助手 Pro v3.0")
-        self.setGeometry(100, 100, 1100, 800)
+        self.setWindowTitle("Eason - Email Assistant")
+        
+        # 设置合理的初始窗口大小（可调整）
+        self.setMinimumSize(900, 600)  # 最小尺寸
+        self.resize(980, 680)  # 初始尺寸
+        
+        # 居中显示
+        from PyQt6.QtGui import QScreen
+        screen = QScreen.availableGeometry(self.screen())
+        x = (screen.width() - 980) // 2
+        y = (screen.height() - 680) // 2
+        self.move(x, y)
         
         # 数据存储
         self.config_manager = ConfigManager()
@@ -108,12 +118,19 @@ class MainWindow(QMainWindow):
         tab_fetch = QWidget()
         fetch_layout = QVBoxLayout(tab_fetch)
         fetch_layout.setSpacing(12)
+        fetch_layout.setContentsMargins(8, 8, 8, 8)
         
         fetch_controls = QHBoxLayout()
+        fetch_controls.setSpacing(12)  # 控件之间的间距
+        
+        fetch_label = QLabel("采集数量:")
+        fetch_label.setMinimumWidth(70)  # 确保标签有足够空间
+        
         self.limit_spin = QSpinBox()
         self.limit_spin.setRange(10, 5000)
         self.limit_spin.setValue(200)
         self.limit_spin.setSuffix(" 封")
+        self.limit_spin.setMinimumWidth(100)
         
         self.btn_fetch = QPushButton("🚀 开始采集")
         self.btn_fetch.clicked.connect(self.start_fetch)
@@ -128,8 +145,9 @@ class MainWindow(QMainWindow):
         self.btn_save_contacts.clicked.connect(self.save_fetched_contacts)
         self.btn_save_contacts.setEnabled(False)
 
-        fetch_controls.addWidget(QLabel("采集数量:"))
+        fetch_controls.addWidget(fetch_label)
         fetch_controls.addWidget(self.limit_spin)
+        fetch_controls.addSpacing(8)
         fetch_controls.addWidget(self.btn_fetch)
         fetch_controls.addWidget(self.btn_stop_fetch)
         fetch_controls.addWidget(self.btn_save_contacts)
