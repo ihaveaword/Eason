@@ -548,7 +548,7 @@ class MainWindow(QMainWindow):
                 'recipient_name': '张三',
                 'sender_name': self.template_vars.get('sender_name', '测试发件人'),
                 'sender_company': self.template_vars.get('sender_company', '测试公司'),
-                'sender_email': self.user_input.text(),
+                'sender_email': self.email_input.text() or 'test@example.com',
                 'date': datetime.now().strftime('%Y年%m月%d日'),
                 'time': datetime.now().strftime('%H:%M'),
                 'year': str(datetime.now().year),
