@@ -66,9 +66,10 @@ case $choice in
             mv Eason.spec scripts/build/
         fi
         
-        # 5. 清理构建产物
-        echo "🗑️  清理构建产物"
-        rm -rf build/ dist/ release/
+        # 5. 清理构建产物（保留目录）
+        echo "🗑️  清理构建产物内容（保留目录结构）"
+        rm -rf build/* dist/* release/* 2>/dev/null || true
+        mkdir -p build dist release
         
         # 6. 清理Python缓存
         echo "🗑️  清理Python缓存"
@@ -100,9 +101,15 @@ case $choice in
             mv email_assistant_gui.py archive/email_assistant_gui_v1.py
         fi
         
-        # 清理构建产物
-        echo "🗑️  清理构建产物"
-        rm -rf build/ dist/ release/
+        # 清理构建产物（保留目录）
+        echo "🗑️  清理构建产物内容（保留目录结构）"
+        rm -rf build/* dist/* release/* 2>/dev/null || true
+        mkdir -p build dist release
+        
+        # 创建 .gitkeep 文件
+        for dir in build dist release; do
+            echo "# 此文件确保目录被Git追踪" > "$dir/.gitkeep"
+        done
         
         echo ""
         echo "✅ 保守清理完成！旧代码已归档到 archive/"
@@ -110,10 +117,17 @@ case $choice in
         
     3)
         echo ""
-        echo "🗑️  仅清理构建产物..."
+        echo "🗑️  仅清理构建产物内容（保留目录）..."
         echo ""
         
-        rm -rf build/ dist/ release/
+        rm -rf build/* dist/* release/* 2>/dev/null || true
+        mkdir -p build dist release
+        
+        # 创建 .gitkeep 文件
+        for dir in build dist release; do
+            echo "# 此文件确保目录被Git追踪" > "$dir/.gitkeep"
+        done
+        
         find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
         find . -type f -name "*.pyc" -delete 2>/dev/null || true
         
