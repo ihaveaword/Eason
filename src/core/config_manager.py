@@ -80,3 +80,11 @@ class ConfigManager:
             'variables': variables,
             'enabled': self.settings.value('template/enabled', False, type=bool)
         }
+    
+    def save_theme(self, theme: str):
+        """保存主题设置"""
+        self.settings.setValue('appearance/theme', theme)
+    
+    def load_theme(self) -> str:
+        """加载主题设置"""
+        return self.settings.value('appearance/theme', 'light')

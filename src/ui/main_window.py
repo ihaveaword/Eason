@@ -14,18 +14,21 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QSettings
 from ..core import EmailSender, ContactFetcher, ConfigManager
 from ..utils import read_contacts, export_contacts
-from .styles import STYLESHEET
+from .styles import STYLESHEET, LIGHT_THEME, DARK_THEME
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("📧 Eason - 邮件助手 v2.0")
+        self.setWindowTitle("📧 Eason - 邮件助手 v2.1")
         self.setGeometry(100, 100, 850, 700)
-        self.setStyleSheet(STYLESHEET)
         
         # 数据存储
         self.config_manager = ConfigManager()
         self.contacts_data = []
+        
+        # 主题设置
+        self.current_theme = self.config_manager.load_theme()
+        self.apply_theme(self.current_theme)
         
         # 线程引用
         self.fetch_thread = None
@@ -40,6 +43,18 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(main_widget)
         main_layout.setSpacing(12)
         main_layout.setContentsMargins(16, 16, 16, 16)
+        
+        # 顶部工具栏（主题切换按钮）
+        toolbar_layout = QHBoxLayout()
+        toolbar_layout.addStretch()
+        
+        self.theme_button = QPushButton()
+        self.theme_button.setObjectName("themeButton")
+        self.update_theme_button_text()
+        self.theme_button.clicked.connect(self.toggle_theme)
+        toolbar_layout.addWidget(self.theme_button)
+        
+        main_layout.addLayout(toolbar_layout)
 
         # 1. 顶部配置区
         config_group = QGroupBox("📮 账号配置 (163邮箱)")
@@ -564,6 +579,31 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             QMessageBox.critical(self, "❌ 预览失败", f"模板预览失败:\n\n{str(e)}")
+    
+    def toggle_theme(self):
+        """切换主题"""
+        if self.current_theme == 'light':
+            self.current_theme = 'dark'
+        else:
+            self.current_theme = 'light'
+        
+        self.apply_theme(self.current_theme)
+        self.config_manager.save_theme(self.current_theme)
+        self.update_theme_button_text()
+    
+    def apply_theme(self, theme: str):
+        """应用主题"""
+        if theme == 'dark':
+            self.setStyleSheet(DARK_THEME)
+        else:
+            self.setStyleSheet(LIGHT_THEME)
+    
+    def update_theme_button_text(self):
+        """更新主题按钮文字"""
+        if self.current_theme == 'light':
+            self.theme_button.setText("🌙 暗色模式")
+        else:
+            self.theme_button.setText("☀️ 亮色模式")
 
 def main():
     app = QApplication(sys.argv)
