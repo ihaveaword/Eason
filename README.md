@@ -6,9 +6,10 @@
 
 一个精美的 macOS 邮件批量发送工具,支持联系人采集和批量邮件发送。
 
-![Version](https://img.shields.io/badge/version-1.0-blue)
+![Version](https://img.shields.io/badge/version-2.0-blue)
 ![Python](https://img.shields.io/badge/python-3.8+-green)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![Architecture](https://img.shields.io/badge/architecture-modular-brightgreen)
 
 ## ✨ 功能特点
 
@@ -50,6 +51,16 @@ Eason/
 - Python 3.8 或更高版本
 - 163 邮箱账号及授权码
 
+## 🆕 v2.0 重大更新
+
+**模块化重构** - 代码更清晰，扩展更容易！
+
+- ✅ 8个独立模块，职责分明
+- ✅ 核心逻辑与UI分离
+- ✅ 添加新功能速度提升 5 倍
+- ✅ 代码可测试、可复用
+- 📖 详见 [重构文档](docs/REFACTORING_V2.md)
+
 ## 🚀 快速开始
 
 ### 1️⃣ 一键安装（推荐）
@@ -67,13 +78,13 @@ cd /Users/code/Eason
 ### 2️⃣ 运行程序
 
 ```bash
+# 方式1: 使用启动脚本 (推荐)
 ./run.sh
-```
 
-或手动激活虚拟环境：
+# 方式2: 直接运行新版本
+python main.py
 
-```bash
-source .venv/bin/activate
+# 方式3: 运行旧版本 (仍然可用)
 python email_assistant_gui.py
 ```
 

@@ -34,7 +34,7 @@ if ! "$VENV_DIR/bin/python" -c "import PyQt6" 2>/dev/null; then
     fi
 fi
 
-# 运行应用
-echo "🚀 启动邮件助手..."
+# 运行应用 (v2.0 使用新入口)
+echo "🚀 启动邮件助手 v2.0..."
 echo ""
-"$VENV_DIR/bin/python" email_assistant_gui.py
+"$VENV_DIR/bin/python" main.py
