@@ -1,30 +1,38 @@
 """
-主窗口界面
-包含采集联系人和批量发送两个功能标签页
+主窗口界面 - 商业级设计
+Dashboard + 卡片式布局
 """
 import os
 import time
 import csv
+from datetime import datetime
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
     QLabel, QLineEdit, QPushButton, QTextEdit, 
     QTabWidget, QProgressBar, QFileDialog, QMessageBox, 
     QSpinBox, QFormLayout, QGroupBox, QCheckBox, QComboBox
 )
-from PyQt6.QtCore import QSettings
+from PyQt6.QtCore import QSettings, Qt
 from ..core import EmailSender, ContactFetcher, ConfigManager
 from ..utils import read_contacts, export_contacts
 from .styles import STYLESHEET, LIGHT_THEME, DARK_THEME
+from .styles_premium import LIGHT_THEME_PREMIUM, DARK_THEME_PREMIUM
+from .dashboard import Dashboard
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("📧 Eason - 邮件助手 v2.1")
-        self.setGeometry(100, 100, 850, 700)
+        self.setWindowTitle("✨ Eason - 邮件助手 Pro v3.0")
+        self.setGeometry(100, 100, 1100, 800)
         
         # 数据存储
         self.config_manager = ConfigManager()
         self.contacts_data = []
+        
+        # 统计数据
+        self.total_sent = 0
+        self.success_count = 0
+        self.today_sent = 0
         
         # 主题设置
         self.current_theme = self.config_manager.load_theme()
@@ -36,45 +44,65 @@ class MainWindow(QMainWindow):
 
         self.init_ui()
         self.load_config()
+        self.load_stats()
 
     def init_ui(self):
         main_widget = QWidget()
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
-        main_layout.setSpacing(12)
-        main_layout.setContentsMargins(16, 16, 16, 16)
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(24, 24, 24, 24)
         
-        # 顶部工具栏（主题切换按钮）
-        toolbar_layout = QHBoxLayout()
-        toolbar_layout.addStretch()
+        # ===== 顶部栏：Logo + 主题切换 =====
+        header_layout = QHBoxLayout()
         
+        # Logo和标题
+        logo_layout = QVBoxLayout()
+        logo_label = QLabel("✨ Eason Pro")
+        logo_label.setStyleSheet("font-size: 24px; font-weight: 700; color: #667eea;")
+        subtitle_label = QLabel("智能邮件营销助手")
+        subtitle_label.setStyleSheet("font-size: 13px; color: #999;")
+        logo_layout.addWidget(logo_label)
+        logo_layout.addWidget(subtitle_label)
+        logo_layout.setSpacing(0)
+        
+        header_layout.addLayout(logo_layout)
+        header_layout.addStretch()
+        
+        # 主题切换按钮
         self.theme_button = QPushButton()
         self.theme_button.setObjectName("themeButton")
         self.update_theme_button_text()
         self.theme_button.clicked.connect(self.toggle_theme)
-        toolbar_layout.addWidget(self.theme_button)
+        header_layout.addWidget(self.theme_button)
         
-        main_layout.addLayout(toolbar_layout)
-
-        # 1. 顶部配置区
-        config_group = QGroupBox("📮 账号配置 (163邮箱)")
+        main_layout.addLayout(header_layout)
+        
+        # ===== Dashboard 统计面板 =====
+        self.dashboard = Dashboard()
+        main_layout.addWidget(self.dashboard)
+        
+        # ===== 账号配置区 =====
+        config_group = QGroupBox("🔐 账号配置")
         config_layout = QFormLayout()
-        config_layout.setSpacing(8)
+        config_layout.setSpacing(12)
+        config_layout.setContentsMargins(16, 20, 16, 16)
         
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("your_email@163.com")
-        config_layout.addRow("邮箱账号:", self.email_input)
+        config_layout.addRow("📧 邮箱账号:", self.email_input)
         
         self.pwd_input = QLineEdit()
         self.pwd_input.setPlaceholderText("授权码（非登录密码）")
         self.pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
-        config_layout.addRow("授权码:", self.pwd_input)
+        config_layout.addRow("🔑 授权码:", self.pwd_input)
         
         config_group.setLayout(config_layout)
         main_layout.addWidget(config_group)
 
-        # 2. 中间功能区 (Tabs)
+        # ===== 功能标签页 =====
         self.tabs = QTabWidget()
+        self.tabs.setDocumentMode(True)
         
         # --- Tab 1: 采集联系人 ---
         tab_fetch = QWidget()
@@ -377,6 +405,10 @@ class MainWindow(QMainWindow):
         )
         if path:
             self.contact_path_input.setText(path)
+            # 更新Dashboard中的联系人数量
+            contacts = self.parse_contacts(path)
+            self.contacts_data = contacts
+            self.update_dashboard()
 
     def select_attachment(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -492,6 +524,13 @@ class MainWindow(QMainWindow):
         self.log("=" * 50)
         self.log(f"🎉 发送任务结束！成功: {success}/{total}")
         
+        # 更新统计数据
+        self.total_sent += total
+        self.success_count += success
+        self.today_sent += total
+        self.save_stats()
+        self.update_dashboard()
+        
         QMessageBox.information(
             self, 
             "✅ 发送完成", 
@@ -592,11 +631,11 @@ class MainWindow(QMainWindow):
         self.update_theme_button_text()
     
     def apply_theme(self, theme: str):
-        """应用主题"""
+        """应用主题（使用Premium版本）"""
         if theme == 'dark':
-            self.setStyleSheet(DARK_THEME)
+            self.setStyleSheet(DARK_THEME_PREMIUM)
         else:
-            self.setStyleSheet(LIGHT_THEME)
+            self.setStyleSheet(LIGHT_THEME_PREMIUM)
     
     def update_theme_button_text(self):
         """更新主题按钮文字"""
@@ -604,11 +643,42 @@ class MainWindow(QMainWindow):
             self.theme_button.setText("🌙 暗色模式")
         else:
             self.theme_button.setText("☀️ 亮色模式")
+    
+    def load_stats(self):
+        """加载统计数据"""
+        self.total_sent = self.config_manager.settings.value('stats/total_sent', 0, type=int)
+        self.success_count = self.config_manager.settings.value('stats/success_count', 0, type=int)
+        self.today_sent = self.config_manager.settings.value('stats/today_sent', 0, type=int)
+        
+        # 更新Dashboard
+        success_rate = (self.success_count / self.total_sent * 100) if self.total_sent > 0 else 0
+        self.dashboard.update_stats(
+            total=self.total_sent,
+            success_rate=success_rate,
+            today=self.today_sent,
+            contacts=len(self.contacts_data)
+        )
+    
+    def save_stats(self):
+        """保存统计数据"""
+        self.config_manager.settings.setValue('stats/total_sent', self.total_sent)
+        self.config_manager.settings.setValue('stats/success_count', self.success_count)
+        self.config_manager.settings.setValue('stats/today_sent', self.today_sent)
+    
+    def update_dashboard(self):
+        """更新Dashboard显示"""
+        success_rate = (self.success_count / self.total_sent * 100) if self.total_sent > 0 else 0
+        self.dashboard.update_stats(
+            total=self.total_sent,
+            success_rate=success_rate,
+            today=self.today_sent,
+            contacts=len(self.contacts_data)
+        )
 
 def main():
     app = QApplication(sys.argv)
     
     # 设置应用程序信息
-    app.setApplicationName("邮件批量发送助手")
+    app.setApplicationName("Eason邮件助手Pro")
     app.setOrganizationName("EmailAssistant")
-    app.setApplicationVersion("1.0")
+    app.setApplicationVersion("3.0")
