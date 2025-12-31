@@ -185,7 +185,7 @@ class GroupEditDialog(QDialog):
 
 
 class ContactManagerWidget(QWidget):
-    """联系人管理组件 - 固定深色风格"""
+    """联系人管理组件"""
     
     # 信号：选中联系人用于发送
     contacts_selected_for_send = pyqtSignal(list)
@@ -197,6 +197,7 @@ class ContactManagerWidget(QWidget):
         self.db = ContactDatabase()
         self.current_group_id = None  # None = 全部
         self.selected_contacts = []
+        self.is_dark_theme = True  # 默认深色主题
         self.setup_ui()
         self.load_data()
     
@@ -209,12 +210,6 @@ class ContactManagerWidget(QWidget):
         self.group_panel = QFrame()
         self.group_panel.setObjectName("groupPanel")
         self.group_panel.setFixedWidth(200)
-        self.group_panel.setStyleSheet("""
-            #groupPanel {
-                background: #1E1E2E;
-                border-right: 1px solid #2D2D3D;
-            }
-        """)
         
         group_layout = QVBoxLayout(self.group_panel)
         group_layout.setContentsMargins(12, 16, 12, 16)
@@ -223,26 +218,12 @@ class ContactManagerWidget(QWidget):
         # 分组标题
         group_header = QHBoxLayout()
         self.group_title = QLabel("📂 分组")
-        self.group_title.setStyleSheet("color: #9CA3AF; font-size: 12px; font-weight: 600;")
         group_header.addWidget(self.group_title)
         group_header.addStretch()
         
         self.add_group_btn = QPushButton("+")
         self.add_group_btn.setFixedSize(24, 24)
         self.add_group_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.add_group_btn.setStyleSheet("""
-            QPushButton {
-                background: rgba(79, 70, 229, 0.3);
-                border: none;
-                border-radius: 4px;
-                color: #A5B4FC;
-                font-size: 16px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background: rgba(79, 70, 229, 0.5);
-            }
-        """)
         self.add_group_btn.clicked.connect(self.add_group)
         group_header.addWidget(self.add_group_btn)
         group_layout.addLayout(group_header)
