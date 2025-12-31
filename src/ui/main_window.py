@@ -56,15 +56,15 @@ class MainWindow(QMainWindow):
         # ===== 顶部栏：Logo + 主题切换 =====
         header_layout = QHBoxLayout()
         
-        # Logo和标题
+        # Logo和标题 - 极简风格
         logo_layout = QVBoxLayout()
-        logo_label = QLabel("✨ Eason Pro")
-        logo_label.setStyleSheet("font-size: 24px; font-weight: 700; color: #667eea;")
-        subtitle_label = QLabel("智能邮件营销助手")
-        subtitle_label.setStyleSheet("font-size: 13px; color: #999;")
+        logo_label = QLabel("Eason")
+        logo_label.setStyleSheet("font-size: 20px; font-weight: 600; color: #171717; letter-spacing: -0.5px;")
+        subtitle_label = QLabel("Email Assistant")
+        subtitle_label.setStyleSheet("font-size: 12px; color: #737373; font-weight: 400;")
         logo_layout.addWidget(logo_label)
         logo_layout.addWidget(subtitle_label)
-        logo_layout.setSpacing(0)
+        logo_layout.setSpacing(2)
         
         header_layout.addLayout(logo_layout)
         header_layout.addStretch()
