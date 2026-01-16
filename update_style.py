@@ -1,4 +1,5 @@
-"""
+
+content = r'''"""
 极客紫样式系统 - Purple Geek Theme (Deep Nebula)
 Work is Art.
 """
@@ -8,26 +9,26 @@ PURPLE_THEME = """
    全局基础
    ============================================ */
 QMainWindow, QWidget {
-    background-color: #1C1E2E;  /* Blue-gray main bg */
-    color: #E0E4F0;
-    font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+    background-color: #0F0F1A;  /* Deep Space Black/Purple */
+    color: #E0E0E0;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
 }
 
 QFrame#contentArea {
-    background-color: #1C1E2E;
+    background-color: #0F0F1A;
 }
 
 /* ============================================
    侧边栏 (Level 2)
    ============================================ */
 QFrame#sidebar {
-    background-color: #141621;
-    border-right: 1px solid #252838;
+    background-color: #181828;
+    border-right: 1px solid #1F1F33;
 }
 
 QLabel#logoText {
     color: #FFFFFF;
-    font-family: -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif;
+    font-family: 'Segoe UI', sans-serif;
     font-size: 24px;
     font-weight: 800;
     letter-spacing: 1px;
@@ -51,7 +52,7 @@ QPushButton:hover {
 }
 
 QPushButton:checked {
-    background-color: #6B7FEB; /* Active Blue-Purple from icon */
+    background-color: #6C5CE7; /* Active Purple */
     color: #FFFFFF;
     font-weight: 600;
 }
@@ -59,10 +60,10 @@ QPushButton:checked {
 /* ============================================
    卡片与容器 (Level 3)
    ============================================ */
-QFrame#bannerCard, QGroupBox, QFrame#statsCard, QFrame#statusCard, QFrame#contentCard {
-    background-color: #242738;
+QFrame#bannerCard, QGroupBox, QFrame[objectName^="statsCard"] {
+    background-color: #232336;
     border-radius: 16px;
-    border: none; /* 无边框，更融合 */
+    border: 1px solid #2D2D44; /* Subtle border */
 }
 
 QGroupBox {
@@ -102,78 +103,30 @@ QLabel#bannerSubtitle {
 
 QLabel {
     color: #E0E0E0;
-    background: transparent;
 }
 
 QLabel#fieldLabel, QLabel#settingLabel {
     color: #A0A0B0;
     font-size: 13px;
     font-weight: 500;
-    background: transparent;
-}
-
-/* 卡片内的标签样式 */
-QLabel#cardIcon {
-    background: transparent;
-    font-size: 20px;
-}
-
-QLabel#cardTitle {
-    color: #A0A0B0;
-    font-size: 13px;
-    font-weight: 500;
-    background: transparent;
-}
-
-QLabel#cardValue {
-    color: #FFFFFF;
-    font-size: 28px;
-    font-weight: 700;
-    background: transparent;
-}
-
-QLabel#cardSubtitle {
-    color: #6B7280;
-    font-size: 12px;
-    background: transparent;
-}
-
-QLabel#sectionTitle {
-    color: #FFFFFF;
-    font-size: 16px;
-    font-weight: 600;
-    background: transparent;
-}
-
-QLabel#tipLabel {
-    color: #6B7280;
-    font-size: 12px;
-    background: transparent;
-}
-
-QLabel#statValue {
-    color: #FFFFFF;
-    font-size: 24px;
-    font-weight: 700;
-    background: transparent;
 }
 
 /* ============================================
    输入框 (Level 4 - Deep)
    ============================================ */
 QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox {
-    background-color: #171925; /* Deep inset */
-    border: 1px solid #2D2F44;
+    background-color: #151520; /* Deep inset */
+    border: 1px solid #2D2D44;
     border-radius: 12px;
     padding: 10px 14px;
     color: #FFFFFF;
     font-size: 14px;
-    selection-background-color: #6B7FEB;
+    selection-background-color: #6C5CE7;
 }
 
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus {
-    border: 1px solid #6B7FEB;
-    background-color: #1E202E;
+    border: 1px solid #6C5CE7;
+    background-color: #1A1A26;
 }
 
 /* Placeholder color */
@@ -185,20 +138,21 @@ QLineEdit::placeholder, QTextEdit::placeholder {
    按钮系统
    ============================================ */
 QPushButton#primaryButton {
-    background-color: #6B7FEB;
+    background-color: #6C5CE7;
     color: white;
     border-radius: 12px;
-    padding: 10px 16px;
+    padding: 10px 24px;
     font-weight: 600;
+    text-align: center;
 }
 
 QPushButton#primaryButton:hover {
-    background-color: #5A6FE0;
-    border: 1px solid #7B8FF5;
+    background-color: #5B4BC4;
+    border: 1px solid #7D6EF0;
 }
 
 QPushButton#primaryButton:pressed {
-    background-color: #4A5FD0;
+    background-color: #4A3DB0;
 }
 
 QPushButton#secondaryButton {
@@ -207,6 +161,7 @@ QPushButton#secondaryButton {
     border: 1px solid #2D2D44;
     border-radius: 12px;
     padding: 8px 16px;
+    text-align: center;
 }
 
 QPushButton#secondaryButton:hover {
@@ -219,7 +174,7 @@ QPushButton#dangerButton {
     color: #FF6B6B;
     border: 1px solid rgba(231, 76, 60, 0.3);
     border-radius: 12px;
-    padding: 8px 16px;
+    text-align: center;
 }
 
 QPushButton#dangerButton:hover {
@@ -231,12 +186,12 @@ QPushButton#dangerButton:hover {
    表格与列表
    ============================================ */
 QTableWidget {
-    background-color: #242738;
-    border: 1px solid #2D2F44;
+    background-color: #232336;
+    border: 1px solid #2D2D44;
     border-radius: 12px;
-    gridline-color: #2D2F44;
-    color: #E0E4F0;
-    selection-background-color: rgba(107, 127, 235, 0.2);
+    gridline-color: #2D2D44;
+    color: #E0E0E0;
+    selection-background-color: rgba(108, 92, 231, 0.2);
     selection-color: #FFFFFF;
 }
 
@@ -265,7 +220,7 @@ QProgressBar {
 }
 
 QProgressBar::chunk {
-    background-color: #6B7FEB;
+    background-color: #6C5CE7;
     border-radius: 6px;
 }
 
@@ -286,14 +241,14 @@ QComboBox::down-arrow {
     image: none;
     border-left: 5px solid transparent;
     border-right: 5px solid transparent;
-    border-top: 6px solid #6B7FEB;
+    border-top: 6px solid #6C5CE7;
     margin-right: 10px;
 }
 
 QComboBox QAbstractItemView {
-    background-color: #242738;
-    border: 1px solid #2D2F44;
-    selection-background-color: #6B7FEB;
+    background-color: #232336;
+    border: 1px solid #2D2D44;
+    selection-background-color: #6C5CE7;
     color: white;
     outline: none;
 }
@@ -314,3 +269,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
     height: 0px;
 }
 """
+'''
+with open('/Users/code/Eason/src/ui/styles_premium.py', 'w') as f:
+    f.write(content)
+print("Updated styles_premium.py")

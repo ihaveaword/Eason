@@ -8,7 +8,7 @@ import time
 import smtplib
 from datetime import datetime
 from email.message import EmailMessage
-from typing import List, Dict
+from typing import List, Dict, Optional
 from PyQt6.QtCore import QThread, pyqtSignal
 from .email_config import get_smtp_server, get_smtp_port, use_starttls
 
@@ -16,26 +16,33 @@ from .email_config import get_smtp_server, get_smtp_port, use_starttls
 class EmailSender(QThread):
     """邮件发送线程"""
     
-    log_signal = pyqtSignal(str)
-    progress_signal = pyqtSignal(int, int)
-    finished_signal = pyqtSignal(int, int)  # success_count, total
-    error_signal = pyqtSignal(str)
+    # 信号定义（与 main_window_v2.py 匹配）
+    progress = pyqtSignal(int, int, str)  # current, total, email
+    result = pyqtSignal(int, int)  # success_count, failed_count
+    error = pyqtSignal(str)
+    finished = pyqtSignal()
+    batch_done = pyqtSignal(int, int)  # batch_num, wait_time
     
-    def __init__(self, config: Dict, contact_list: List[str], smtp_server: str = None):
+    def __init__(self, user: str, pwd: str, contacts: List[str], 
+                 subject: str, body: str, attachment: Optional[str] = None,
+                 batch_size: int = 10, interval: int = 5,
+                 html_body: Optional[str] = None):
         super().__init__()
-        self.cfg = config
-        self.contacts = contact_list
         
-        # 自动检测邮箱服务器（如果未指定）
-        user_email = config.get('user', '')
-        if smtp_server:
-            self.smtp_server = smtp_server
-            self.smtp_port = 465
-            self.use_tls = False
-        else:
-            self.smtp_server = get_smtp_server(user_email)
-            self.smtp_port = get_smtp_port(user_email)
-            self.use_tls = use_starttls(user_email)
+        self.user = user
+        self.pwd = pwd
+        self.contacts = contacts
+        self.subject = subject
+        self.body = body
+        self.attachment = attachment
+        self.batch_size = batch_size
+        self.interval = interval
+        self.html_body = html_body
+        
+        # 自动检测邮箱服务器
+        self.smtp_server = get_smtp_server(user)
+        self.smtp_port = get_smtp_port(user)
+        self.use_tls = use_starttls(user)
         
         self.is_running = True
     
@@ -57,132 +64,91 @@ class EmailSender(QThread):
     def run(self):
         """执行发送任务"""
         total_emails = len(self.contacts)
-        batch_size = self.cfg['batch_size']
-        interval = self.cfg['interval']
-        
         success_count = 0
         failed_count = 0
         
-        # 日志显示使用的服务器
-        self.log_signal.emit(f"📧 使用邮件服务器: {self.smtp_server}:{self.smtp_port}")
-        
         try:
-            for idx in range(0, total_emails, batch_size):
+            for idx in range(0, total_emails, self.batch_size):
                 if not self.is_running:
-                    self.log_signal.emit("⏹️ 用户停止了发送任务")
                     break
                 
-                batch = self.contacts[idx:idx+batch_size]
-                batch_num = idx // batch_size + 1
-                self.log_signal.emit(f"📦 批次 {batch_num}: 准备发送 {len(batch)} 封邮件...")
+                batch = self.contacts[idx:idx + self.batch_size]
+                batch_num = idx // self.batch_size + 1
                 
                 try:
                     with self._connect_smtp() as server:
-                        server.login(self.cfg['user'], self.cfg['pwd'])
-                        self.log_signal.emit(f"🔐 批次 {batch_num} SMTP 登录成功")
+                        server.login(self.user, self.pwd)
                         
                         for i, contact in enumerate(batch):
                             if not self.is_running:
                                 break
                             
-                            # 构建邮件
-                            msg = self._build_email(contact)
+                            # 处理联系人格式（可能是 email 或 dict）
+                            if isinstance(contact, dict):
+                                email = contact.get('email', '')
+                            else:
+                                email = str(contact)
+                            
+                            if not email:
+                                continue
+                            
+                            # 构建并发送邮件
+                            msg = self._build_email(email)
                             
                             try:
                                 server.send_message(msg)
                                 success_count += 1
-                                self.log_signal.emit(f"✅ [{success_count}/{total_emails}] {contact}")
-                                self.progress_signal.emit(idx + i + 1, total_emails)
+                                self.progress.emit(idx + i + 1, total_emails, email)
                             except Exception as e:
                                 failed_count += 1
-                                self.log_signal.emit(f"❌ 发送失败 {contact}: {str(e)}")
+                                self.error.emit(f"发送失败 {email}: {str(e)}")
                 
+                except smtplib.SMTPAuthenticationError as e:
+                    self.error.emit(f"SMTP认证失败: 请检查邮箱账号和授权码是否正确")
+                    break
                 except smtplib.SMTPServerDisconnected:
-                    self.log_signal.emit(f"⚠️ 批次 {batch_num} 连接断开，将在下一批次重连")
+                    self.error.emit(f"批次 {batch_num} 连接断开，将在下一批次重连")
                 except Exception as e:
-                    self.log_signal.emit(f"❌ 批次 {batch_num} 发生错误: {str(e)}")
+                    self.error.emit(f"批次 {batch_num} 发生错误: {str(e)}")
                 
                 # 批次间隔
-                if idx + batch_size < total_emails and self.is_running:
-                    self.log_signal.emit(f"⏸️ 批次完成，等待 {interval} 秒后继续...")
-                    for _ in range(interval):
+                if idx + self.batch_size < total_emails and self.is_running:
+                    self.batch_done.emit(batch_num, self.interval)
+                    for _ in range(self.interval):
                         if not self.is_running:
                             break
                         time.sleep(1)
             
-            self.log_signal.emit(f"🎉 发送任务完成！成功: {success_count}, 失败: {failed_count}, 总计: {total_emails}")
-            self.finished_signal.emit(success_count, total_emails)
+            self.result.emit(success_count, failed_count)
         
         except Exception as e:
-            self.error_signal.emit(f"发送过程发生严重错误: {str(e)}")
-            self.finished_signal.emit(success_count, total_emails)
+            self.error.emit(f"发送过程发生严重错误: {str(e)}")
+            self.result.emit(success_count, failed_count)
+        
+        finally:
+            self.finished.emit()
     
     def _build_email(self, recipient: str) -> EmailMessage:
         """构建邮件（支持HTML模板）"""
         msg = EmailMessage()
-        msg['From'] = self.cfg['user']
+        msg['From'] = self.user
         msg['To'] = recipient
-        msg['Subject'] = self.cfg['subject']
+        msg['Subject'] = self.subject
         
         # 判断是否使用HTML模板
-        if self.cfg.get('use_template', False):
-            try:
-                # 准备变量
-                variables = self._prepare_variables(recipient)
-                
-                # 渲染HTML
-                from ..templates import TemplateEngine
-                engine = TemplateEngine()
-                html_content = engine.render(
-                    self.cfg['template_name'], 
-                    variables
-                )
-                
-                # 设置多部分内容
-                msg.set_content(self.cfg.get('body', '纯文本备用内容'))
-                msg.add_alternative(html_content, subtype='html')
-                
-            except Exception as e:
-                # 模板渲染失败，降级为纯文本
-                self.log_signal.emit(f"⚠️ 模板渲染失败({recipient}): {e}，使用纯文本")
-                msg.set_content(self.cfg['body'])
+        if self.html_body:
+            # 设置多部分内容（纯文本备用 + HTML）
+            msg.set_content(self.body or '请使用支持HTML的邮件客户端查看此邮件')
+            msg.add_alternative(self.html_body, subtype='html')
         else:
             # 纯文本模式
-            msg.set_content(self.cfg['body'])
+            msg.set_content(self.body)
         
         # 添加附件
-        for attachment_path in self.cfg.get('attachments', []):
-            if attachment_path and os.path.exists(attachment_path):
-                self._add_attachment(msg, attachment_path)
+        if self.attachment and os.path.exists(self.attachment):
+            self._add_attachment(msg, self.attachment)
         
         return msg
-    
-    def _prepare_variables(self, recipient: str) -> Dict:
-        """准备模板变量"""
-        # 提取收件人姓名（从邮箱@前面）
-        recipient_name = recipient.split('@')[0] if '@' in recipient else recipient
-        
-        return {
-            # 收件人
-            'recipient_email': recipient,
-            'recipient_name': recipient_name,
-            
-            # 发件人
-            'sender_name': self.cfg.get('sender_name', ''),
-            'sender_company': self.cfg.get('sender_company', ''),
-            'sender_email': self.cfg['user'],
-            
-            # 系统变量
-            'date': datetime.now().strftime('%Y年%m月%d日'),
-            'time': datetime.now().strftime('%H:%M'),
-            'datetime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'year': str(datetime.now().year),
-            
-            # 自定义变量
-            'custom_1': self.cfg.get('custom_1', ''),
-            'custom_2': self.cfg.get('custom_2', ''),
-            'custom_3': self.cfg.get('custom_3', ''),
-        }
     
     def _add_attachment(self, msg: EmailMessage, filepath: str):
         """添加附件到邮件"""
@@ -213,4 +179,4 @@ class EmailSender(QThread):
                     filename=filename
                 )
         except Exception as e:
-            self.log_signal.emit(f"⚠️ 附件 {os.path.basename(filepath)} 添加失败: {str(e)}")
+            self.error.emit(f"⚠️ 附件 {os.path.basename(filepath)} 添加失败: {str(e)}")

@@ -17,6 +17,7 @@ from PyQt6.QtCore import QSettings, Qt, QTimer
 from PyQt6.QtGui import QFont, QPainter, QColor, QBrush, QPen
 from ..core import EmailSender, ContactFetcher, ConfigManager
 from ..utils import read_contacts
+from .styles_premium import PURPLE_THEME
 from .contact_manager import ContactManagerWidget
 from .quick_send import QuickSendDialog, ContactSelectDialog
 
@@ -38,14 +39,14 @@ class BarChart(QWidget):
         self.data = {}  # {label: value}
         self.setMinimumHeight(180)
         self.colors = [
-            QColor("#4F46E5"),  # 主色
-            QColor("#06B6D4"),  # 青色
-            QColor("#10B981"),  # 绿色
-            QColor("#F59E0B"),  # 橙色
-            QColor("#EF4444"),  # 红色
-            QColor("#8B5CF6"),  # 紫色
-            QColor("#EC4899"),  # 粉色
-            QColor("#6366F1"),  # 靛蓝
+            QColor("#6C5CE7"),  # Theme Primary
+            QColor("#A371F7"),  # Purple Light
+            QColor("#10B981"),  # Emerald
+            QColor("#F59E0B"),  # Amber
+            QColor("#EF4444"),  # Red
+            QColor("#8B5CF6"),  # Violet
+            QColor("#EC4899"),  # Pink
+            QColor("#6366F1"),  # Indigo
         ]
     
     def set_data(self, data: dict):
@@ -178,22 +179,28 @@ class CodeLogWidget(QTextEdit):
 
 
 class StatsCard(QFrame):
-    """统计卡片 - 带图标"""
+    """统计卡片 - 左右布局"""
     def __init__(self, icon: str, title: str, value: str, subtitle: str = "", parent=None):
         super().__init__(parent)
         self.setObjectName("statsCard")
+        self.setMinimumHeight(100)
         
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(8)
+        # 主布局：左右分布
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 16, 20, 16)
+        layout.setSpacing(16)
         
-        # 顶部：图标 + 标题
+        # 左侧：图标 + 文字信息
+        left_layout = QVBoxLayout()
+        left_layout.setSpacing(4)
+        
+        # 图标 + 标题行
         header = QHBoxLayout()
-        header.setSpacing(10)
+        header.setSpacing(8)
         
         icon_label = QLabel(icon)
         icon_label.setObjectName("cardIcon")
-        icon_label.setFixedSize(32, 32)
+        icon_label.setFixedSize(28, 28)
         icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.addWidget(icon_label)
         
@@ -202,20 +209,22 @@ class StatsCard(QFrame):
         header.addWidget(title_label)
         header.addStretch()
         
-        layout.addLayout(header)
-        
-        # 数值
-        self.value_label = QLabel(value)
-        self.value_label.setObjectName("cardValue")
-        layout.addWidget(self.value_label)
+        left_layout.addLayout(header)
         
         # 副标题
         if subtitle:
             sub_label = QLabel(subtitle)
             sub_label.setObjectName("cardSubtitle")
-            layout.addWidget(sub_label)
+            left_layout.addWidget(sub_label)
         
-        layout.addStretch()
+        left_layout.addStretch()
+        layout.addLayout(left_layout, 1)
+        
+        # 右侧：大数字
+        self.value_label = QLabel(value)
+        self.value_label.setObjectName("cardValue")
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        layout.addWidget(self.value_label)
     
     def update_value(self, value: str):
         self.value_label.setText(value)
@@ -227,6 +236,21 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Eason - Email Assistant")
         self.setMinimumSize(1000, 700)
         self.resize(1100, 750)
+        
+        # 设置macOS深色标题栏
+        import platform
+        if platform.system() == 'Darwin':  # macOS
+            try:
+                # 使用pyobjc设置深色主题
+                from Foundation import NSBundle
+                from AppKit import NSApplication, NSAppearance, NSAppearanceNameDarkAqua
+                app = NSApplication.sharedApplication()
+                app.setAppearance_(NSAppearance.appearanceNamed_(NSAppearanceNameDarkAqua))
+            except ImportError:
+                # 如果没有pyobjc，尝试备用方案
+                pass
+            except Exception:
+                pass
         
         # 居中显示
         from PyQt6.QtGui import QScreen
@@ -243,14 +267,14 @@ class MainWindow(QMainWindow):
         self.today_sent = 0
         
         # 主题
-        self.current_theme = self.config_manager.load_theme()
+        # self.current_theme = self.config_manager.load_theme()
         
         # 线程
         self.fetch_thread = None
         self.send_thread = None
 
         self.init_ui()
-        self.apply_theme(self.current_theme)
+        self.apply_theme()
         self.load_config()
         self.load_stats()
 
@@ -314,13 +338,13 @@ class MainWindow(QMainWindow):
         
         sidebar_layout.addStretch()
         
-        # 主题切换
-        self.theme_button = SidebarButton("", "🌙")
-        self.theme_button.setCheckable(False)
-        self.theme_button.setObjectName("themeButton")
-        self.update_theme_button_text()
-        self.theme_button.clicked.connect(self.toggle_theme)
-        sidebar_layout.addWidget(self.theme_button)
+        # 主题切换 (已移除单主题)
+        # self.theme_button = SidebarButton("", "🌙")
+        # self.theme_button.setCheckable(False)
+        # self.theme_button.setObjectName("themeButton")
+        # self.update_theme_button_text()
+        # self.theme_button.clicked.connect(self.toggle_theme)
+        # sidebar_layout.addWidget(self.theme_button)
         
         main_layout.addWidget(sidebar)
         
@@ -391,7 +415,7 @@ class MainWindow(QMainWindow):
         
         self.card_total = StatsCard("📨", "总发送", "0", "累计发送邮件数")
         self.card_success = StatsCard("✅", "成功率", "0%", "发送成功比例")
-        self.card_today = StatsCard("📅", "今日发送", "0", "今天已发送数量")
+        self.card_today = StatsCard("📈", "今日发送", "0", "今天已发送数量")
         self.card_contacts = StatsCard("👥", "联系人", "0", "已导入联系人数")
         
         stats_grid.addWidget(self.card_total, 0, 0)
@@ -420,9 +444,8 @@ class MainWindow(QMainWindow):
         self.progress_bar.setFormat("准备就绪")
         status_layout.addWidget(self.progress_bar)
         
-        self.log_viewer = QTextEdit()
-        self.log_viewer.setObjectName("logViewer")
-        self.log_viewer.setReadOnly(True)
+        # 使用 CodeLogWidget 保持样式一致
+        self.log_viewer = CodeLogWidget()
         self.log_viewer.setPlaceholderText("运行日志将显示在这里...")
         self.log_viewer.setMaximumHeight(120)
         status_layout.addWidget(self.log_viewer)
@@ -511,12 +534,12 @@ class MainWindow(QMainWindow):
         date_label.setMinimumWidth(70)
         
         self.date_combo = QComboBox()
-        self.date_combo.addItem("📅 全部时间", "all")
-        self.date_combo.addItem("📅 最近 7 天", "7")
-        self.date_combo.addItem("📅 最近 30 天", "30")
-        self.date_combo.addItem("📅 最近 90 天", "90")
-        self.date_combo.addItem("📅 最近 180 天", "180")
-        self.date_combo.addItem("📅 最近 365 天", "365")
+        self.date_combo.addItem(" 全部时间", "all")
+        self.date_combo.addItem(" 最近 7 天", "7")
+        self.date_combo.addItem(" 最近 30 天", "30")
+        self.date_combo.addItem(" 最近 90 天", "90")
+        self.date_combo.addItem(" 最近 180 天", "180")
+        self.date_combo.addItem(" 最近 365 天", "365")
         self.date_combo.setMinimumWidth(140)
         
         date_group.addWidget(date_label)
@@ -947,6 +970,36 @@ class MainWindow(QMainWindow):
         btn_row.addStretch()
         layout.addLayout(btn_row)
         
+        # 进度条
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat("准备发送...")
+        self.progress_bar.setMinimumHeight(28)
+        layout.addWidget(self.progress_bar)
+        
+        # ===== 实时日志卡片 =====
+        log_card = QFrame()
+        log_card.setObjectName("contentCard")
+        log_layout = QVBoxLayout(log_card)
+        log_layout.setContentsMargins(24, 24, 24, 24)
+        log_layout.setSpacing(12)
+        
+        log_header = QHBoxLayout()
+        log_title = QLabel("💬 发送日志")
+        log_title.setObjectName("sectionTitle")
+        log_header.addWidget(log_title)
+        
+        self.send_status_label = QLabel("⚪ 待发送")
+        self.send_status_label.setObjectName("tipLabel")
+        log_header.addWidget(self.send_status_label)
+        log_header.addStretch()
+        log_layout.addLayout(log_header)
+        
+        self.send_log = CodeLogWidget()
+        log_layout.addWidget(self.send_log)
+        
+        layout.addWidget(log_card)
+        
         layout.addStretch()
         
         scroll.setWidget(scroll_content)
@@ -1055,12 +1108,22 @@ class MainWindow(QMainWindow):
             btn.setChecked(i == index)
 
     # ========== 功能方法 ==========
-    def log(self, message):
+    def log(self, message, target='collect'):
+        """
+        写入日志
+        target: 'collect' - 采集页面日志, 'send' - 发送页面日志, 'both' - 两个都写
+        """
         timestamp = time.strftime("%H:%M:%S", time.localtime())
-        self.log_viewer.append(f"[{timestamp}] {message}")
-        cursor = self.log_viewer.textCursor()
-        cursor.movePosition(cursor.MoveOperation.End)
-        self.log_viewer.setTextCursor(cursor)
+        formatted_msg = f"[{timestamp}] {message}"
+        
+        if target in ('collect', 'both'):
+            self.log_viewer.append(formatted_msg)
+            cursor = self.log_viewer.textCursor()
+            cursor.movePosition(cursor.MoveOperation.End)
+            self.log_viewer.setTextCursor(cursor)
+        
+        if target in ('send', 'both') and hasattr(self, 'send_log'):
+            self.send_log.append(formatted_msg)
 
     def on_email_type_changed(self):
         """邮箱类型选择变更"""
@@ -1109,6 +1172,7 @@ class MainWindow(QMainWindow):
         self.on_email_type_changed()
 
     def save_config(self):
+        """保存配置（静默保存，不显示弹窗）"""
         self.config_manager.settings.setValue("email", self.email_input.text())
         self.config_manager.settings.setValue("pwd", self.pwd_input.text())
         self.config_manager.settings.setValue("email_type", self.email_type_combo.currentData())
@@ -1116,7 +1180,6 @@ class MainWindow(QMainWindow):
         self.config_manager.settings.setValue("last_subject", self.subject_input.text())
         self.config_manager.settings.setValue("last_body", self.body_input.toPlainText())
         self.config_manager.settings.setValue("last_attachment", self.attach_path_input.text())
-        QMessageBox.information(self, "✅ 保存成功", "设置已保存")
 
     def load_stats(self):
         self.total_sent = self.config_manager.settings.value('stats/total_sent', 0, type=int)
@@ -1597,7 +1660,13 @@ class MainWindow(QMainWindow):
         attachment = self.attach_path_input.text().strip() or None
 
         self.save_config()
-        self.log(f"开始发送邮件，共 {len(self.contacts_data)} 位收件人")
+        
+        # 清空并初始化发送日志
+        self.send_log.clear()
+        self.send_status_label.setText("🟢 发送中...")
+        self.log(f"📧 开始发送邮件，共 {len(self.contacts_data)} 位收件人", 'send')
+        self.log(f"📦 批次设置: 每批 {self.batch_size_spin.value()} 封，间隔 {self.batch_interval_spin.value()} 秒", 'send')
+        
         self.btn_send.setEnabled(False)
         self.btn_stop_send.setEnabled(True)
         self.progress_bar.setMaximum(len(self.contacts_data))
@@ -1618,12 +1687,13 @@ class MainWindow(QMainWindow):
     def stop_send(self):
         if self.send_thread and self.send_thread.isRunning():
             self.send_thread.stop()
-            self.log("正在停止发送...")
+            self.log("⏹ 正在停止发送...", 'send')
+            self.send_status_label.setText("🟡 停止中...")
 
     def on_send_progress(self, current: int, total: int, email: str):
         self.progress_bar.setValue(current)
         self.progress_bar.setFormat(f"发送中 {current}/{total}")
-        self.log(f"✅ [{current}/{total}] 已发送: {email}")
+        self.log(f"✅ [{current}/{total}] 已发送: {email}", 'send')
 
     def on_send_result(self, success: int, failed: int):
         self.total_sent += success + failed
@@ -1631,715 +1701,33 @@ class MainWindow(QMainWindow):
         self.today_sent += success + failed
         self.save_stats()
         self.update_dashboard()
+        self.log(f"📊 发送统计: 成功 {success} 封, 失败 {failed} 封", 'send')
 
     def on_send_error(self, error: str):
-        self.log(f"❌ 发送失败: {error}")
+        self.log(f"❌ {error}", 'send')
 
     def on_batch_done(self, batch_num: int, wait_time: int):
-        self.log(f"📦 第 {batch_num} 批完成，等待 {wait_time} 秒...")
+        self.log(f"📦 第 {batch_num} 批完成，等待 {wait_time} 秒后继续...", 'send')
         self.progress_bar.setFormat(f"等待中... {wait_time}s")
 
     def on_send_finished(self):
         self.btn_send.setEnabled(True)
         self.btn_stop_send.setEnabled(False)
-        self.progress_bar.setFormat("发送完成")
-        self.log("🎉 邮件发送任务完成")
+        self.progress_bar.setFormat("✅ 发送完成")
+        self.send_status_label.setText("✅ 已完成")
+        self.log("🎉 邮件发送任务完成！", 'send')
         self.update_dashboard()
 
     # 主题切换
-    def toggle_theme(self):
-        if self.current_theme == 'light':
-            self.current_theme = 'dark'
-        else:
-            self.current_theme = 'light'
-        self.apply_theme(self.current_theme)
-        self.config_manager.save_theme(self.current_theme)
-        self.update_theme_button_text()
-
-    def apply_theme(self, theme: str):
-        if theme == 'dark':
-            self.setStyleSheet(DARK_STYLE)
-        else:
-            self.setStyleSheet(LIGHT_STYLE)
+    def apply_theme(self, theme=None):
+        """应用统一的紫色主题"""
+        self.setStyleSheet(PURPLE_THEME)
         
-        # 更新子组件主题
-        is_dark = (theme == 'dark')
+        # 强制子组件使用暗色模式逻辑
         if hasattr(self, 'contact_manager'):
-            self.contact_manager.update_theme(is_dark)
+            # Purple Theme 本质上是 Dark Mode
+            self.contact_manager.update_theme(True)
 
-    def update_theme_button_text(self):
-        if self.current_theme == 'light':
-            self.theme_button.setText("🌙  暗色模式")
-        else:
-            self.theme_button.setText("☀️  亮色模式")
+    # methods removed: toggle_theme, update_theme_button_text
 
 
-# ========== 样式定义 ==========
-# 方案B: 蓝灰色调轻柔版 - Light Theme
-LIGHT_STYLE = """
-/* 全局 - 蓝灰底色 */
-QMainWindow {
-    background-color: #F8FAFC;
-}
-
-/* 侧边栏 - 保持深色，专业感 */
-#sidebar {
-    background-color: #1E293B;
-    border: none;
-}
-
-#logoText {
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-/* 侧边栏按钮 */
-SidebarButton {
-    background-color: transparent;
-    color: #94A3B8;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 14px;
-}
-
-SidebarButton:hover {
-    background-color: #334155;
-    color: #F1F5F9;
-}
-
-SidebarButton:checked {
-    background-color: #4F46E5;
-    color: #ffffff;
-}
-
-#themeButton {
-    background-color: #334155;
-    color: #94A3B8;
-}
-
-#themeButton:hover {
-    background-color: #475569;
-    color: #F1F5F9;
-}
-
-/* 内容区 - 淡蓝白底 */
-#contentArea {
-    background-color: #F8FAFC;
-}
-
-#pageTitle {
-    font-size: 28px;
-    font-weight: 700;
-    color: #1E293B;
-    padding-bottom: 8px;
-}
-
-/* 横幅卡片 - 靛蓝渐变 */
-#bannerCard {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4F46E5, stop:1 #7C3AED);
-    border-radius: 16px;
-    min-height: 100px;
-}
-
-#bannerTitle {
-    color: #ffffff;
-    font-size: 22px;
-    font-weight: 600;
-}
-
-#bannerSubtitle {
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 14px;
-}
-
-/* 统计卡片 - 纯白背景 */
-#statsCard {
-    background-color: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-    min-height: 120px;
-}
-
-#cardIcon {
-    background-color: #EEF2FF;
-    border-radius: 8px;
-    font-size: 18px;
-}
-
-#cardTitle {
-    color: #64748B;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#cardValue {
-    color: #1E293B;
-    font-size: 32px;
-    font-weight: 700;
-}
-
-#cardSubtitle {
-    color: #64748B;
-    font-size: 12px;
-}
-
-/* 内容卡片 */
-#contentCard, #statusCard {
-    background-color: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 12px;
-}
-
-#sectionTitle {
-    color: #1E293B;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-#fieldLabel {
-    color: #475569;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#tipLabel {
-    color: #64748B;
-    font-size: 13px;
-}
-
-/* 输入框 - 蓝灰边框 */
-QLineEdit, QTextEdit, QComboBox {
-    background-color: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 14px;
-    color: #1E293B;
-}
-
-QSpinBox {
-    background-color: #ffffff;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 10px 12px;
-    padding-right: 30px;
-    font-size: 14px;
-    color: #1E293B;
-}
-
-QSpinBox::up-button, QSpinBox::down-button {
-    background-color: #F8FAFC;
-    border: none;
-    width: 24px;
-}
-
-QSpinBox::up-button {
-    border-top-right-radius: 7px;
-    border-bottom: 1px solid #E2E8F0;
-}
-
-QSpinBox::down-button {
-    border-bottom-right-radius: 7px;
-}
-
-QSpinBox::up-button:hover, QSpinBox::down-button:hover {
-    background-color: #E2E8F0;
-}
-
-QSpinBox::up-arrow {
-    image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-bottom: 6px solid #64748B;
-    width: 0;
-    height: 0;
-}
-
-QSpinBox::down-arrow {
-    image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #64748B;
-    width: 0;
-    height: 0;
-}
-
-QSpinBox::up-arrow:hover, QSpinBox::down-arrow:hover {
-    border-bottom-color: #1E293B;
-    border-top-color: #1E293B;
-}
-
-QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QComboBox:focus {
-    border: 2px solid #4F46E5;
-}
-
-/* 按钮 - 靛蓝主色 */
-#primaryButton {
-    background-color: #4F46E5;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 600;
-    min-height: 40px;
-}
-
-#primaryButton:hover {
-    background-color: #4338CA;
-}
-
-#primaryButton:disabled {
-    background-color: #E2E8F0;
-    color: #94A3B8;
-}
-
-#secondaryButton {
-    background-color: #ffffff;
-    color: #1E293B;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#secondaryButton:hover {
-    background-color: #F8FAFC;
-    border-color: #CBD5E1;
-}
-
-#dangerButton {
-    background-color: #DC2626;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#dangerButton:hover {
-    background-color: #B91C1C;
-}
-
-#dangerButton:disabled {
-    background-color: #E2E8F0;
-    color: #94A3B8;
-}
-
-/* 进度条 - 靛蓝色 */
-QProgressBar {
-    background-color: #E2E8F0;
-    border: none;
-    border-radius: 6px;
-    height: 12px;
-    text-align: center;
-    font-size: 12px;
-    color: #1E293B;
-}
-
-QProgressBar::chunk {
-    background-color: #4F46E5;
-    border-radius: 6px;
-}
-
-/* 日志 - 深色保持专业感 */
-#logViewer {
-    background-color: #1E293B;
-    color: #34D399;
-    border: none;
-    border-radius: 8px;
-    padding: 12px;
-    font-family: 'Menlo', 'Monaco', monospace;
-    font-size: 12px;
-}
-
-/* 复选框 */
-QCheckBox {
-    color: #1E293B;
-    font-size: 14px;
-    spacing: 8px;
-}
-
-/* 滚动区域 */
-QScrollArea {
-    border: none;
-    background-color: transparent;
-}
-
-QScrollBar:vertical {
-    background: #F8FAFC;
-    width: 8px;
-    border-radius: 4px;
-}
-
-QScrollBar::handle:vertical {
-    background: #CBD5E1;
-    border-radius: 4px;
-    min-height: 30px;
-}
-
-QScrollBar::handle:vertical:hover {
-    background: #94A3B8;
-}
-
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-
-/* 表格样式 */
-QTableWidget {
-    background: white;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    gridline-color: #E2E8F0;
-}
-
-QTableWidget::item {
-    padding: 8px;
-    border-bottom: 1px solid #E2E8F0;
-    color: #1E293B;
-}
-
-QTableWidget::item:selected {
-    background: #EEF2FF;
-    color: #1E293B;
-}
-
-QHeaderView::section {
-    background: #F8FAFC;
-    color: #64748B;
-    padding: 10px;
-    border: none;
-    border-bottom: 1px solid #E2E8F0;
-    font-weight: 600;
-}
-
-/* 下拉框 */
-QComboBox::drop-down {
-    border: none;
-    width: 24px;
-}
-
-QComboBox::down-arrow {
-    image: none;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-top: 5px solid #64748B;
-    margin-right: 6px;
-}
-
-QComboBox QAbstractItemView {
-    background-color: white;
-    border: 1px solid #E2E8F0;
-    border-radius: 6px;
-    selection-background-color: #EEF2FF;
-    selection-color: #1E293B;
-    padding: 4px;
-}
-"""
-
-DARK_STYLE = """
-/* 全局 */
-QMainWindow {
-    background-color: #000000;
-}
-
-/* 侧边栏 */
-#sidebar {
-    background-color: #1c1c1e;
-    border: none;
-}
-
-#logoText {
-    color: #ffffff;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-SidebarButton {
-    background-color: transparent;
-    color: #8e8e93;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 16px;
-    text-align: left;
-    font-size: 14px;
-}
-
-SidebarButton:hover {
-    background-color: #2c2c2e;
-    color: #ffffff;
-}
-
-SidebarButton:checked {
-    background-color: #0a84ff;
-    color: #ffffff;
-}
-
-#themeButton {
-    background-color: #2c2c2e;
-    color: #8e8e93;
-}
-
-#themeButton:hover {
-    background-color: #3c3c3e;
-    color: #ffffff;
-}
-
-/* 内容区 */
-#contentArea {
-    background-color: #000000;
-}
-
-#pageTitle {
-    font-size: 28px;
-    font-weight: 700;
-    color: #ffffff;
-    padding-bottom: 8px;
-}
-
-#bannerCard {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #667eea, stop:1 #764ba2);
-    border-radius: 16px;
-    min-height: 100px;
-}
-
-#bannerTitle {
-    color: #ffffff;
-    font-size: 22px;
-    font-weight: 600;
-}
-
-#bannerSubtitle {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 14px;
-}
-
-#statsCard {
-    background-color: #1c1c1e;
-    border: 1px solid #38383a;
-    border-radius: 12px;
-    min-height: 120px;
-}
-
-#cardIcon {
-    background-color: #2c2c2e;
-    border-radius: 8px;
-    font-size: 18px;
-}
-
-#cardTitle {
-    color: #8e8e93;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#cardValue {
-    color: #ffffff;
-    font-size: 32px;
-    font-weight: 700;
-}
-
-#cardSubtitle {
-    color: #8e8e93;
-    font-size: 12px;
-}
-
-#contentCard, #statusCard {
-    background-color: #1c1c1e;
-    border: 1px solid #38383a;
-    border-radius: 12px;
-}
-
-#sectionTitle {
-    color: #ffffff;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-#fieldLabel {
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#tipLabel {
-    color: #8e8e93;
-    font-size: 13px;
-}
-
-QLineEdit, QTextEdit, QComboBox {
-    background-color: #2c2c2e;
-    border: 1px solid #38383a;
-    border-radius: 8px;
-    padding: 10px 12px;
-    font-size: 14px;
-    color: #ffffff;
-}
-
-QSpinBox {
-    background-color: #2c2c2e;
-    border: 1px solid #38383a;
-    border-radius: 8px;
-    padding: 10px 12px;
-    padding-right: 30px;
-    font-size: 14px;
-    color: #ffffff;
-}
-
-QSpinBox::up-button, QSpinBox::down-button {
-    background-color: #3c3c3e;
-    border: none;
-    width: 24px;
-}
-
-QSpinBox::up-button {
-    border-top-right-radius: 7px;
-    border-bottom: 1px solid #48484a;
-}
-
-QSpinBox::down-button {
-    border-bottom-right-radius: 7px;
-}
-
-QSpinBox::up-button:hover, QSpinBox::down-button:hover {
-    background-color: #48484a;
-}
-
-QSpinBox::up-arrow {
-    image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-bottom: 6px solid #8e8e93;
-    width: 0;
-    height: 0;
-}
-
-QSpinBox::down-arrow {
-    image: none;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 6px solid #8e8e93;
-    width: 0;
-    height: 0;
-}
-
-QSpinBox::up-arrow:hover, QSpinBox::down-arrow:hover {
-    border-bottom-color: #ffffff;
-    border-top-color: #ffffff;
-}
-
-QLineEdit:focus, QTextEdit:focus, QSpinBox:focus, QComboBox:focus {
-    border: 2px solid #0a84ff;
-}
-
-#primaryButton {
-    background-color: #0a84ff;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 12px 24px;
-    font-size: 14px;
-    font-weight: 600;
-    min-height: 40px;
-}
-
-#primaryButton:hover {
-    background-color: #409cff;
-}
-
-#primaryButton:disabled {
-    background-color: #38383a;
-    color: #8e8e93;
-}
-
-#secondaryButton {
-    background-color: #2c2c2e;
-    color: #ffffff;
-    border: 1px solid #38383a;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#secondaryButton:hover {
-    background-color: #3c3c3e;
-}
-
-#dangerButton {
-    background-color: #ff453a;
-    color: #ffffff;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 16px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-#dangerButton:hover {
-    background-color: #ff6961;
-}
-
-#dangerButton:disabled {
-    background-color: #38383a;
-    color: #8e8e93;
-}
-
-QProgressBar {
-    background-color: #38383a;
-    border: none;
-    border-radius: 6px;
-    height: 12px;
-    text-align: center;
-    font-size: 12px;
-    color: #ffffff;
-}
-
-QProgressBar::chunk {
-    background-color: #30d158;
-    border-radius: 6px;
-}
-
-#logViewer {
-    background-color: #0a0a0a;
-    color: #30d158;
-    border: none;
-    border-radius: 8px;
-    padding: 12px;
-    font-family: 'Menlo', 'Monaco', monospace;
-    font-size: 12px;
-}
-
-QCheckBox {
-    color: #ffffff;
-    font-size: 14px;
-    spacing: 8px;
-}
-
-QScrollArea {
-    border: none;
-    background-color: transparent;
-}
-
-QScrollBar:vertical {
-    background: #1c1c1e;
-    width: 8px;
-    border-radius: 4px;
-}
-
-QScrollBar::handle:vertical {
-    background: #48484a;
-    border-radius: 4px;
-    min-height: 30px;
-}
-
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-    height: 0px;
-}
-"""

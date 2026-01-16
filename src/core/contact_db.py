@@ -55,9 +55,30 @@ class ContactDatabase:
             )
         ''')
         
+        # 联系人-分组关联表（多对多）
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS contact_groups (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                contact_id INTEGER NOT NULL,
+                group_id INTEGER NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (contact_id) REFERENCES contacts(id) ON DELETE CASCADE,
+                FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+                UNIQUE(contact_id, group_id)
+            )
+        ''')
+        
         # 创建索引
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_contacts_email ON contacts(email)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_contacts_group ON contacts(group_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_contact_groups_contact ON contact_groups(contact_id)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_contact_groups_group ON contact_groups(group_id)')
+        
+        # 迁移旧数据：将 contacts.group_id 迁移到 contact_groups 表
+        cursor.execute('''
+            INSERT OR IGNORE INTO contact_groups (contact_id, group_id)
+            SELECT id, group_id FROM contacts WHERE group_id IS NOT NULL
+        ''')
         
         # 插入默认分组
         cursor.execute("SELECT COUNT(*) FROM groups")
@@ -87,10 +108,11 @@ class ContactDatabase:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
+        # 使用contact_groups关联表统计联系人数量
         cursor.execute('''
-            SELECT g.*, COUNT(c.id) as contact_count 
+            SELECT g.*, COUNT(DISTINCT cg.contact_id) as contact_count 
             FROM groups g 
-            LEFT JOIN contacts c ON g.id = c.group_id
+            LEFT JOIN contact_groups cg ON g.id = cg.group_id
             GROUP BY g.id
             ORDER BY g.id
         ''')
@@ -151,17 +173,33 @@ class ContactDatabase:
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
         
-        query = '''
-            SELECT c.*, g.name as group_name, g.color as group_color
-            FROM contacts c
-            LEFT JOIN groups g ON c.group_id = g.id
-            WHERE 1=1
-        '''
-        params = []
-        
         if group_id is not None:
-            query += ' AND c.group_id = ?'
-            params.append(group_id)
+            # 查询特定分组的联系人（使用关联表）
+            query = '''
+                SELECT c.*, g.name as group_name, g.color as group_color
+                FROM contacts c
+                INNER JOIN contact_groups cg ON c.id = cg.contact_id
+                LEFT JOIN groups g ON cg.group_id = g.id
+                WHERE cg.group_id = ?
+            '''
+            params = [group_id]
+        else:
+            # 查询所有联系人
+            query = '''
+                SELECT DISTINCT c.*, 
+                    (SELECT GROUP_CONCAT(g2.name, ', ') 
+                     FROM contact_groups cg2 
+                     JOIN groups g2 ON cg2.group_id = g2.id 
+                     WHERE cg2.contact_id = c.id) as group_name,
+                    (SELECT g3.color 
+                     FROM contact_groups cg3 
+                     JOIN groups g3 ON cg3.group_id = g3.id 
+                     WHERE cg3.contact_id = c.id 
+                     LIMIT 1) as group_color
+                FROM contacts c
+                WHERE 1=1
+            '''
+            params = []
         
         if search:
             query += ' AND (c.email LIKE ? OR c.name LIKE ?)'
@@ -183,7 +221,8 @@ class ContactDatabase:
         if group_id is None:
             cursor.execute("SELECT COUNT(*) FROM contacts")
         else:
-            cursor.execute("SELECT COUNT(*) FROM contacts WHERE group_id = ?", (group_id,))
+            # 使用关联表查询
+            cursor.execute("SELECT COUNT(DISTINCT contact_id) FROM contact_groups WHERE group_id = ?", (group_id,))
         
         count = cursor.fetchone()[0]
         conn.close()
@@ -278,9 +317,33 @@ class ContactDatabase:
         conn.close()
         return deleted
     
-    def move_contacts_to_group(self, contact_ids: List[int], group_id: Optional[int]) -> int:
-        """批量移动联系人到分组"""
-        if not contact_ids:
+    def copy_contacts_to_group(self, contact_ids: List[int], group_id: int) -> int:
+        """批量复制联系人到分组（添加到关联表，不影响原有分组）"""
+        if not contact_ids or group_id is None:
+            return 0
+        
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        added = 0
+        for contact_id in contact_ids:
+            try:
+                cursor.execute(
+                    "INSERT OR IGNORE INTO contact_groups (contact_id, group_id) VALUES (?, ?)",
+                    (contact_id, group_id)
+                )
+                if cursor.rowcount > 0:
+                    added += 1
+            except sqlite3.IntegrityError:
+                pass  # 已存在则跳过
+        
+        conn.commit()
+        conn.close()
+        return added
+    
+    def remove_contacts_from_group(self, contact_ids: List[int], group_id: int) -> int:
+        """批量从分组中移除联系人（从关联表删除，联系人仍保留）"""
+        if not contact_ids or group_id is None:
             return 0
         
         conn = sqlite3.connect(self.db_path)
@@ -288,14 +351,24 @@ class ContactDatabase:
         
         placeholders = ','.join(['?' for _ in contact_ids])
         cursor.execute(
-            f"UPDATE contacts SET group_id = ? WHERE id IN ({placeholders})",
-            [group_id] + contact_ids
+            f"DELETE FROM contact_groups WHERE contact_id IN ({placeholders}) AND group_id = ?",
+            contact_ids + [group_id]
         )
-        updated = cursor.rowcount
+        removed = cursor.rowcount
         
         conn.commit()
         conn.close()
-        return updated
+        return removed
+    
+    def move_contacts_to_group(self, contact_ids: List[int], group_id: Optional[int]) -> int:
+        """批量移动联系人到分组（兼容旧代码，实际上是复制到新分组）"""
+        if not contact_ids:
+            return 0
+        
+        if group_id is None:
+            return 0  # 无目标分组时不操作
+        
+        return self.copy_contacts_to_group(contact_ids, group_id)
     
     def import_contacts(self, contacts: List[Dict], group_id: Optional[int] = None) -> int:
         """批量导入联系人"""

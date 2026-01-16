@@ -111,7 +111,7 @@ class ContactFetcher(QThread):
                 else:
                     result.append(part)
             return ''.join(result)
-        except:
+        except Exception:
             return value
     
     def _get_date_criteria(self) -> str:
