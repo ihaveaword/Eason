@@ -60,7 +60,7 @@ echo ""
             --windowed \
             --osx-bundle-identifier=com.eason.emailassistant \
             ${ICON_OPTION} \
-            email_assistant_gui.py
+            main.py
 
 # 检查结果
 if [ -d "dist/Eason.app" ]; then

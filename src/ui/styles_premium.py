@@ -233,7 +233,7 @@ QPushButton#dangerButton:hover {
 QTableWidget {
     background-color: #242738;
     border: 1px solid #2D2F44;
-    border-radius: 12px;
+    border-radius: 12px;  /* 减小圆角避免裁剪内容 */
     gridline-color: #2D2F44;
     color: #E0E4F0;
     selection-background-color: rgba(107, 127, 235, 0.2);
@@ -275,6 +275,7 @@ QComboBox {
     border-radius: 12px;
     padding: 8px 12px;
     color: #FFFFFF;
+    combobox-popup: 0; /* Force custom styling on macOS */
 }
 
 QComboBox::drop-down {
@@ -293,9 +294,23 @@ QComboBox::down-arrow {
 QComboBox QAbstractItemView {
     background-color: #242738;
     border: 1px solid #2D2F44;
-    selection-background-color: #6B7FEB;
-    color: white;
+    border-radius: 12px;
+    padding: 4px;
     outline: none;
+    selection-background-color: transparent;
+}
+
+QComboBox QAbstractItemView::item {
+    color: #E0E4F0;
+    padding: 8px 12px;
+    min-height: 24px;
+    border-radius: 8px; /* Rounded selection */
+    margin: 2px 0;
+}
+
+QComboBox QAbstractItemView::item:selected {
+    background-color: #6B7FEB;
+    color: #FFFFFF;
 }
 
 /* 滚动条 - 极简 */

@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView,
     QFrame, QScrollArea, QMenu, QMessageBox, QDialog,
     QFormLayout, QComboBox, QTextEdit, QCheckBox, QAbstractItemView,
-    QFileDialog
+    QFileDialog, QToolButton
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QBrush, QAction
@@ -197,7 +197,8 @@ class ContactManagerWidget(QWidget):
         self.db = ContactDatabase()
         self.current_group_id = None  # None = 全部
         self.selected_contacts = []
-        self.is_dark_theme = True  # 默认深色主题
+        # 默认深色主题
+
         self.setup_ui()
         self.load_data()
     
@@ -301,6 +302,8 @@ class ContactManagerWidget(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(40)  # 设置行高为40px
+        self.table.setShowGrid(False)  # 关闭网格线，移除widget单元格的默认内边距
         
         # 双击发送邮件
         self.table.cellDoubleClicked.connect(self.on_cell_double_clicked)
@@ -363,173 +366,94 @@ class ContactManagerWidget(QWidget):
         self.apply_theme_styles()
     
     def update_theme(self, is_dark: bool):
-        """更新主题"""
-        self.is_dark_theme = is_dark
+        """更新主题（强制深色）"""
+        # 始终应用深色主题
         self.apply_theme_styles()
         # 重新加载联系人以更新表格内的按钮样式
         self.load_contacts()
     
     def apply_theme_styles(self):
-        """应用主题样式"""
-        if self.is_dark_theme:
-            # 深色主题
-            self.group_panel.setStyleSheet("""
-                #groupPanel {
-                    background: #1E1E2E;
-                    border-right: 1px solid #2D2D3D;
-                }
-            """)
-            self.group_title.setStyleSheet("color: #9CA3AF; font-size: 12px; font-weight: 600;")
-            self.add_group_btn.setStyleSheet("""
-                QPushButton {
-                    background: rgba(79, 70, 229, 0.3);
-                    border: none;
-                    border-radius: 4px;
-                    color: #A5B4FC;
-                    font-size: 16px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background: rgba(79, 70, 229, 0.5);
-                }
-            """)
-            self.table.setStyleSheet("""
-                QTableWidget {
-                    background: #1A1A2E;
-                    border: 1px solid #2D2D3D;
-                    border-radius: 8px;
-                    gridline-color: #2A2A3E;
-                    alternate-background-color: #1E1E32;
-                }
-                QTableWidget::item {
-                    padding: 10px 8px;
-                    border-bottom: 1px solid #2A2A3E;
-                    color: #E5E7EB;
-                }
-                QTableWidget::item:selected {
-                    background: rgba(107, 127, 235, 0.25);
-                }
-                QHeaderView::section {
-                    background: #15152A;
-                    color: #9CA3AF;
-                    padding: 12px 8px;
-                    border: none;
-                    border-bottom: 2px solid #2D2D3D;
-                    font-weight: 600;
-                    font-size: 13px;
-                }
-            """)
-            self.batch_bar.setStyleSheet("""
-                QFrame {
-                    background: #252536;
-                    border-radius: 8px;
-                    padding: 8px;
-                }
-            """)
-            self.selected_label.setStyleSheet("color: #A5B4FC; font-weight: 600;")
-            
-            # 更新分组按钮样式
-            self._update_group_button_styles(True)
-        else:
-            # 亮色主题 - 蓝灰色调
-            self.group_panel.setStyleSheet("""
-                #groupPanel {
-                    background: #1E293B;
-                    border-right: 1px solid #334155;
-                }
-            """)
-            self.group_title.setStyleSheet("color: #94A3B8; font-size: 12px; font-weight: 600;")
-            self.add_group_btn.setStyleSheet("""
-                QPushButton {
-                    background: rgba(79, 70, 229, 0.4);
-                    border: none;
-                    border-radius: 4px;
-                    color: #C7D2FE;
-                    font-size: 16px;
-                    font-weight: bold;
-                }
-                QPushButton:hover {
-                    background: rgba(79, 70, 229, 0.6);
-                }
-            """)
-            self.table.setStyleSheet("""
-                QTableWidget {
-                    background: white;
-                    border: 1px solid #E2E8F0;
-                    border-radius: 8px;
-                    gridline-color: #E2E8F0;
-                }
-                QTableWidget::item {
-                    padding: 8px;
-                    border-bottom: 1px solid #E2E8F0;
-                    color: #1E293B;
-                }
-                QTableWidget::item:selected {
-                    background: #EEF2FF;
-                    color: #1E293B;
-                }
-                QHeaderView::section {
-                    background: #F8FAFC;
-                    color: #64748B;
-                    padding: 10px;
-                    border: none;
-                    border-bottom: 1px solid #E2E8F0;
-                    font-weight: 600;
-                }
-            """)
-            self.batch_bar.setStyleSheet("""
-                QFrame {
-                    background: #F1F5F9;
-                    border: 1px solid #E2E8F0;
-                    border-radius: 8px;
-                    padding: 8px;
-                }
-            """)
-            self.selected_label.setStyleSheet("color: #4F46E5; font-weight: 600;")
-            
-            # 更新分组按钮样式
-            self._update_group_button_styles(False)
+        """应用主题样式（强制深色）"""
+        # 深色主题
+        self.group_panel.setStyleSheet("""
+            #groupPanel {
+                background: #1E1E2E;
+                border-right: 1px solid #2D2D3D;
+            }
+        """)
+        self.group_title.setStyleSheet("color: #9CA3AF; font-size: 12px; font-weight: 600;")
+        self.add_group_btn.setStyleSheet("""
+            QPushButton {
+                background: rgba(79, 70, 229, 0.3);
+                border: none;
+                border-radius: 4px;
+                color: #A5B4FC;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background: rgba(79, 70, 229, 0.5);
+            }
+        """)
+        self.table.setStyleSheet("""
+            QTableWidget {
+                background: #1A1A2E;
+                border: 1px solid #2D2D3D;
+                border-radius: 8px;
+                gridline-color: #2A2A3E;
+                alternate-background-color: #1E1E32;
+            }
+            QTableWidget::item {
+                padding: 10px 8px;
+                border-bottom: 1px solid #2A2A3E;
+                color: #E5E7EB;
+            }
+            QTableWidget::item:selected {
+                background: rgba(107, 127, 235, 0.25);
+            }
+            QHeaderView::section {
+                background: #15152A;
+                color: #9CA3AF;
+                padding: 12px 8px;
+                border: none;
+                border-bottom: 2px solid #2D2D3D;
+                font-weight: 600;
+                font-size: 13px;
+            }
+        """)
+        self.batch_bar.setStyleSheet("""
+            QFrame {
+                background: #252536;
+                border-radius: 8px;
+                padding: 8px;
+            }
+        """)
+        self.selected_label.setStyleSheet("color: #A5B4FC; font-weight: 600;")
+        
+        # 更新分组按钮样式
+        self._update_group_button_styles()
+
     
-    def _update_group_button_styles(self, is_dark: bool):
-        """更新所有分组按钮样式"""
-        if is_dark:
-            btn_style = """
-                QPushButton {
-                    background: transparent;
-                    border: none;
-                    border-radius: 8px;
-                    padding: 10px 12px;
-                    text-align: left;
-                    font-size: 13px;
-                    color: #E5E7EB;
-                }
-                QPushButton:hover {
-                    background: rgba(255, 255, 255, 0.08);
-                }
-                QPushButton:checked {
-                    background: rgba(79, 70, 229, 0.3);
-                    color: #A5B4FC;
-                }
-            """
-        else:
-            btn_style = """
-                QPushButton {
-                    background: transparent;
-                    border: none;
-                    border-radius: 8px;
-                    padding: 10px 12px;
-                    text-align: left;
-                    font-size: 13px;
-                    color: #F1F5F9;
-                }
-                QPushButton:hover {
-                    background: rgba(255, 255, 255, 0.1);
-                }
-                QPushButton:checked {
-                    background: rgba(79, 70, 229, 0.5);
-                    color: #ffffff;
-                }
-            """
+    def _update_group_button_styles(self):
+        """更新所有分组按钮样式（强制深色）"""
+        btn_style = """
+            QPushButton {
+                background: transparent;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 12px;
+                text-align: left;
+                font-size: 13px;
+                color: #E5E7EB;
+            }
+            QPushButton:hover {
+                background: rgba(255, 255, 255, 0.08);
+            }
+            QPushButton:checked {
+                background: rgba(79, 70, 229, 0.3);
+                color: #A5B4FC;
+            }
+        """
         
         # 更新"全部联系人"按钮
         self.all_btn.setStyleSheet(btn_style)
@@ -580,6 +504,9 @@ class ContactManagerWidget(QWidget):
             
             self.group_buttons_layout.addWidget(btn)
             self.copy_combo.addItem(f"{g['icon']}  {g['name']}", g['id'])
+        
+        # 确保新创建的按钮应用样式
+        self._update_group_button_styles()
     
     def load_contacts(self):
         """加载联系人列表"""
@@ -598,8 +525,11 @@ class ContactManagerWidget(QWidget):
             cb = QCheckBox()
             cb.setProperty('contact_id', c['id'])
             cb.stateChanged.connect(self.on_selection_changed)
+            # 使用系统原生复选框样式（最好看！）
             
             cb_widget = QWidget()
+            cb_widget.setObjectName("cell_container")  # 方案二：设置objectName用于CSS
+            cb_widget.setStyleSheet("background: transparent;")  # 透明背景
             cb_layout = QHBoxLayout(cb_widget)
             cb_layout.addWidget(cb)
             cb_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -632,85 +562,47 @@ class ContactManagerWidget(QWidget):
             self.table.setItem(row, 3, group_item)
             
             # 互动次数（用强调色）
-            count_item = QTableWidgetItem(str(c['interaction_count']))
+            count_item = QTableWidgetItem(f"  {c['interaction_count']}")
             count_item.setForeground(QBrush(QColor('#10B981')))  # 绿色强调
             self.table.setItem(row, 4, count_item)
             
             # 操作按钮
             ops_widget = QWidget()
+            ops_widget.setObjectName("cell_container")  # 方案二：设置objectName用于CSS
+            ops_widget.setStyleSheet("background: transparent;")  # 透明背景，消除深色框
             ops_layout = QHBoxLayout(ops_widget)
-            ops_layout.setContentsMargins(4, 4, 4, 4)
+            ops_layout.setContentsMargins(0, 0, 0, 0)  # 方案二：完全归零
             ops_layout.setSpacing(4)
             
-            edit_btn = QPushButton("✏️")
-            edit_btn.setFixedSize(28, 28)
+            # 按钮尺寸参数（只需修改这一个数字）
+            BTN_SIZE = 22
+            
+            # 方案一：改用QToolButton替代QPushButton
+            edit_btn = QToolButton()
+            edit_btn.setText("✏️")
+            edit_btn.setFixedSize(BTN_SIZE, BTN_SIZE)
             edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             edit_btn.setToolTip("编辑联系人")
-            if self.is_dark_theme:
-                edit_btn.setStyleSheet("""
-                    QPushButton {
-                        background: rgba(107, 127, 235, 0.15);
-                        border: 1px solid rgba(107, 127, 235, 0.3);
-                        border-radius: 4px;
-                        font-size: 14px;
-                    }
-                    QPushButton:hover {
-                        background: rgba(107, 127, 235, 0.35);
-                        border-color: rgba(107, 127, 235, 0.5);
-                    }
-                """)
-            else:
-                edit_btn.setStyleSheet("""
-                    QPushButton {
-                        background: rgba(79, 70, 229, 0.1);
-                        border: 1px solid rgba(79, 70, 229, 0.2);
-                        border-radius: 4px;
-                        font-size: 14px;
-                    }
-                    QPushButton:hover {
-                        background: rgba(79, 70, 229, 0.25);
-                        border-color: rgba(79, 70, 229, 0.4);
-                    }
-                """)
+            edit_btn.setStyleSheet("QToolButton { background: transparent; border: none; }")
             edit_btn.clicked.connect(lambda checked, cid=c['id']: self.edit_contact(cid))
             ops_layout.addWidget(edit_btn)
             
-            del_btn = QPushButton("🗑️")
-            del_btn.setFixedSize(28, 28)
+            del_btn = QToolButton()
+            del_btn.setText("🗑️")
+            del_btn.setFixedSize(BTN_SIZE, BTN_SIZE)
             del_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             del_btn.setToolTip("删除联系人")
-            del_btn.setStyleSheet("""
-                QPushButton {
-                    background: rgba(239, 68, 68, 0.15);
-                    border: 1px solid rgba(239, 68, 68, 0.3);
-                    border-radius: 4px;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background: rgba(239, 68, 68, 0.35);
-                    border-color: rgba(239, 68, 68, 0.5);
-                }
-            """)
+            del_btn.setStyleSheet("QToolButton { background: transparent; border: none; }")
             del_btn.clicked.connect(lambda checked, cid=c['id']: self.delete_contact(cid))
             ops_layout.addWidget(del_btn)
             
             # 快捷发送按钮
-            send_btn = QPushButton("📧")
-            send_btn.setFixedSize(28, 28)
+            send_btn = QToolButton()
+            send_btn.setText("📧")
+            send_btn.setFixedSize(BTN_SIZE, BTN_SIZE)
             send_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             send_btn.setToolTip("快捷发送邮件")
-            send_btn.setStyleSheet("""
-                QPushButton {
-                    background: rgba(16, 185, 129, 0.15);
-                    border: 1px solid rgba(16, 185, 129, 0.3);
-                    border-radius: 4px;
-                    font-size: 14px;
-                }
-                QPushButton:hover {
-                    background: rgba(16, 185, 129, 0.35);
-                    border-color: rgba(16, 185, 129, 0.5);
-                }
-            """)
+            send_btn.setStyleSheet("QToolButton { background: transparent; border: none; }")
             contact_data = {'id': c['id'], 'email': c['email'], 'name': c['name']}
             send_btn.clicked.connect(lambda checked, cd=contact_data: self.quick_send(cd))
             ops_layout.addWidget(send_btn)
