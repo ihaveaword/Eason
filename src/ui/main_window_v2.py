@@ -18,6 +18,7 @@ from PyQt6.QtGui import QFont, QPainter, QColor, QBrush, QPen
 from ..core import EmailSender, ContactFetcher, ConfigManager
 from ..utils import read_contacts
 from .styles_premium import PURPLE_THEME
+from .custom_widgets import PremiumSpinBox
 from .contact_manager import ContactManagerWidget
 from .quick_send import QuickSendDialog, ContactSelectDialog
 
@@ -436,13 +437,21 @@ class MainWindow(QMainWindow):
         status_title = QLabel("📊 运行状态")
         status_title.setObjectName("sectionTitle")
         status_header.addWidget(status_title)
+        
+        # 新增状态胶囊（替代进度条文字）
+        self.status_badge = QLabel("🟢 准备就绪")
+        self.status_badge.setObjectName("statusBadge")
+        self.status_badge.setStyleSheet("color: #10B981; background-color: rgba(16, 185, 129, 0.1);")
+        status_header.addWidget(self.status_badge)
+        
         status_header.addStretch()
         status_layout.addLayout(status_header)
         
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setValue(0)
-        self.progress_bar.setFormat("准备就绪")
-        status_layout.addWidget(self.progress_bar)
+        self.dashboard_progress_bar = QProgressBar()
+        self.dashboard_progress_bar.setValue(0)
+        self.dashboard_progress_bar.setTextVisible(False) # 不显示文字
+        self.dashboard_progress_bar.setVisible(False) # 平时隐藏
+        status_layout.addWidget(self.dashboard_progress_bar)
         
         # 使用 CodeLogWidget 保持样式一致
         self.log_viewer = CodeLogWidget()
@@ -510,13 +519,13 @@ class MainWindow(QMainWindow):
         limit_group.setSpacing(12)
         limit_label = QLabel("采集数量")
         limit_label.setObjectName("fieldLabel")
-        limit_label.setMinimumWidth(70)
+        limit_label.setMinimumWidth(50)
         
-        self.limit_spin = QSpinBox()
-        self.limit_spin.setRange(10, 5000)
+        self.limit_spin = PremiumSpinBox()
+        self.limit_spin.setRange(1, 9999999) # Effectively unlimited
         self.limit_spin.setValue(200)
         self.limit_spin.setSuffix(" 封")
-        self.limit_spin.setMinimumWidth(120)
+        self.limit_spin.setFixedWidth(150) # Precise control
         
         limit_group.addWidget(limit_label)
         limit_group.addWidget(self.limit_spin)
@@ -931,17 +940,18 @@ class MainWindow(QMainWindow):
         label6.setObjectName("fieldLabel")
         label6.setMinimumWidth(90)
         
-        self.batch_size_spin = QSpinBox()
-        self.batch_size_spin.setRange(1, 50)
+        self.batch_size_spin = PremiumSpinBox()
+        self.batch_size_spin.setRange(1, 100)
         self.batch_size_spin.setValue(10)
-        self.batch_size_spin.setPrefix("每批 ")
-        self.batch_size_spin.setSuffix(" 封")
+        # self.batch_size_spin.setSuffix(" 封") # PremiumSpinBox doesn't support prefix logic yet, just suffix
+        self.batch_size_spin.setSuffix(" 封") 
+        self.batch_size_spin.setFixedWidth(120)
         
-        self.batch_interval_spin = QSpinBox()
+        self.batch_interval_spin = PremiumSpinBox()
         self.batch_interval_spin.setRange(10, 300)
         self.batch_interval_spin.setValue(20)
-        self.batch_interval_spin.setPrefix("间隔 ")
         self.batch_interval_spin.setSuffix(" 秒")
+        self.batch_interval_spin.setFixedWidth(120)
         
         row6.addWidget(label6)
         row6.addWidget(self.batch_size_spin)
@@ -1268,6 +1278,11 @@ class MainWindow(QMainWindow):
             'exclude_domains': exclude_domains,
         }
 
+        self.status_badge.setText("🔵 正在采集...")
+        self.status_badge.setStyleSheet("color: #6B7FEB; background-color: rgba(107, 127, 235, 0.1);")
+        self.dashboard_progress_bar.setVisible(True)
+        self.dashboard_progress_bar.setRange(0, 0) # 采集是不定进度的
+
         self.fetch_thread = ContactFetcher(user, pwd, self.limit_spin.value(), options=options)
         self.fetch_thread.progress.connect(self.on_fetch_progress)
         self.fetch_thread.result.connect(self.on_fetch_result)
@@ -1284,6 +1299,10 @@ class MainWindow(QMainWindow):
             self.code_log.add_log(">>> USER_INTERRUPT: STOPPING...", "warning")
             self.log_status.setText("🟡 停止中")
             self.log_status.setStyleSheet("color: #F59E0B;")
+            
+            # Dashboard status
+            self.status_badge.setText("🟡 停止中")
+            self.status_badge.setStyleSheet("color: #F59E0B; background-color: rgba(245, 158, 11, 0.1);")
 
     def on_fetch_progress(self, count: int, email: str):
         self.result_count_label.setText(f"已发现 {count} 个联系人")
@@ -1308,6 +1327,11 @@ class MainWindow(QMainWindow):
         self.code_log.add_log(f"ERROR: {error}", "error")
         self.log_status.setText("🔴 错误")
         self.log_status.setStyleSheet("color: #EF4444;")
+        
+        # Dashboard status error
+        self.status_badge.setText("🔴 发生错误")
+        self.status_badge.setStyleSheet("color: #EF4444; background-color: rgba(239, 68, 68, 0.1);")
+        self.dashboard_progress_bar.setVisible(False)
         QMessageBox.critical(self, "❌ 采集失败", error)
     
     def on_fetch_stats(self, stats: dict):
@@ -1364,6 +1388,11 @@ class MainWindow(QMainWindow):
         
         self.log_status.setText("⚪ 完成")
         self.log_status.setStyleSheet("color: #9CA3AF;")
+        
+        # Dashboard status reset
+        self.status_badge.setText("🟢 准备就绪")
+        self.status_badge.setStyleSheet("color: #10B981; background-color: rgba(16, 185, 129, 0.1);")
+        self.dashboard_progress_bar.setVisible(False)
         
         self.update_dashboard()
     
@@ -1672,6 +1701,13 @@ class MainWindow(QMainWindow):
         self.btn_stop_send.setEnabled(True)
         self.progress_bar.setMaximum(len(self.contacts_data))
         self.progress_bar.setValue(0)
+        
+        # Dashboard status update
+        self.status_badge.setText("🔵 正在发送...")
+        self.status_badge.setStyleSheet("color: #6B7FEB; background-color: rgba(107, 127, 235, 0.1);")
+        self.dashboard_progress_bar.setVisible(True)
+        self.dashboard_progress_bar.setRange(0, len(self.contacts_data))
+        self.dashboard_progress_bar.setValue(0)
 
         self.send_thread = EmailSender(
             user, pwd, self.contacts_data, subject, body, attachment,
@@ -1694,6 +1730,9 @@ class MainWindow(QMainWindow):
     def on_send_progress(self, current: int, total: int, email: str):
         self.progress_bar.setValue(current)
         self.progress_bar.setFormat(f"发送中 {current}/{total}")
+        
+        # Sync dashboard progress
+        self.dashboard_progress_bar.setValue(current)
         self.log(f"✅ [{current}/{total}] 已发送: {email}", 'send')
 
     def on_send_result(self, success: int, failed: int):
@@ -1706,6 +1745,11 @@ class MainWindow(QMainWindow):
 
     def on_send_error(self, error: str):
         self.log(f"❌ {error}", 'send')
+        
+        # Dashboard status error
+        self.status_badge.setText("🔴 发送错误")
+        self.status_badge.setStyleSheet("color: #EF4444; background-color: rgba(239, 68, 68, 0.1);")
+        self.dashboard_progress_bar.setVisible(False)
 
     def on_batch_done(self, batch_num: int, wait_time: int):
         self.log(f"📦 第 {batch_num} 批完成，等待 {wait_time} 秒后继续...", 'send')
@@ -1716,6 +1760,11 @@ class MainWindow(QMainWindow):
         self.btn_stop_send.setEnabled(False)
         self.progress_bar.setFormat("✅ 发送完成")
         self.send_status_label.setText("✅ 已完成")
+        
+        # Dashboard status reset
+        self.status_badge.setText("🟢 发送完成")
+        self.status_badge.setStyleSheet("color: #10B981; background-color: rgba(16, 185, 129, 0.1);")
+        self.dashboard_progress_bar.setVisible(False)
         self.log("🎉 邮件发送任务完成！", 'send')
         self.update_dashboard()
 

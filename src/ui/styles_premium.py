@@ -145,6 +145,14 @@ QLabel#sectionTitle {
     background: transparent;
 }
 
+QLabel#statusBadge {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
 QLabel#tipLabel {
     color: #6B7280;
     font-size: 12px;
@@ -174,6 +182,81 @@ QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox {
 QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus {
     border: 1px solid #6B7FEB;
     background-color: #1E202E;
+}
+
+/* PremiumSpinBox Custom Styling */
+QLineEdit#premiumSpinBoxDisplay {
+    background-color: #171925;
+    border: 1px solid #2D2F44;
+    border-right: none;
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    padding: 11px 10px; /* Match Suffix vertical padding */
+    padding-right: 0px;
+    font-weight: 600;
+}
+
+QLabel#premiumSpinBoxSuffix {
+    background-color: #171925;
+    border-top: 1px solid #2D2F44;
+    border-bottom: 1px solid #2D2F44;
+    padding: 12px 10px 12px 0; /* Match LineEdit vertical padding */
+    color: #9CA3AF;
+    font-weight: 600;
+    font-size: 14px;
+    margin-right: 0px; /* Connect to buttons */
+}
+
+/* Stacked Vertical Buttons */
+QPushButton#premiumSpinBoxBtnPlus {
+    background-color: #3E4055;
+    border: 1px solid #4E5066;
+    border-top-left-radius: 0px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 0px; /* Sharp joint */
+    border-bottom-right-radius: 0px; /* Sharp joint */
+    margin: 0;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 20px;
+    max-height: 20px;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    padding: 0;
+}
+
+QPushButton#premiumSpinBoxBtnMinus {
+    background-color: #3E4055;
+    border: 1px solid #4E5066;
+    border-top: none; /* Merge borders */
+    border-top-left-radius: 0px; /* Sharp joint */
+    border-top-right-radius: 0px; /* Sharp joint */
+    border-bottom-left-radius: 0px;
+    border-bottom-right-radius: 8px;
+    margin: 0;
+    min-width: 28px;
+    max-width: 28px;
+    min-height: 20px;
+    max-height: 20px;
+    color: #FFFFFF;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    padding: 0;
+}
+
+QPushButton#premiumSpinBoxBtnMinus:hover, QPushButton#premiumSpinBoxBtnPlus:hover {
+    background-color: #4E5066;
+    border-color: #6B7FEB;
+}
+
+QPushButton#premiumSpinBoxBtnMinus:pressed, QPushButton#premiumSpinBoxBtnPlus:pressed {
+    background-color: #6B7FEB;
+    color: #FFFFFF;
 }
 
 /* Placeholder color */
