@@ -21,7 +21,9 @@ class EmailSender(QThread):
     result = pyqtSignal(int, int)  # success_count, failed_count
     error = pyqtSignal(str)
     finished = pyqtSignal()
+    finished = pyqtSignal()
     batch_done = pyqtSignal(int, int)  # batch_num, wait_time
+    wait_progress = pyqtSignal(int)    # remaining_seconds
     
     def __init__(self, user: str, pwd: str, contacts: List[str], 
                  subject: str, body: str, attachment: Optional[str] = None,
@@ -114,9 +116,11 @@ class EmailSender(QThread):
                 # 批次间隔
                 if idx + self.batch_size < total_emails and self.is_running:
                     self.batch_done.emit(batch_num, self.interval)
-                    for _ in range(self.interval):
+                    for i in range(self.interval):
                         if not self.is_running:
                             break
+                        remaining = self.interval - i
+                        self.wait_progress.emit(remaining)
                         time.sleep(1)
             
             self.result.emit(success_count, failed_count)

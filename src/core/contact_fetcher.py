@@ -236,15 +236,10 @@ class ContactFetcher(QThread):
                     
                     msg_ids = messages[0].split()
                     folder_total = len(msg_ids)
-                    fetch_count = min(folder_total, self.limit - total_scanned)
+                    self.result.emit(f"  └─ 找到 {folder_total} 封邮件，将持续扫描直至满足采集数量...")
                     
-                    if fetch_count <= 0:
-                        break
-                    
-                    self.result.emit(f"  └─ 找到 {folder_total} 封邮件，将采集 {fetch_count} 封")
-                    
-                    # 倒序遍历（最新的先）
-                    for i in range(folder_total - 1, max(folder_total - fetch_count - 1, -1), -1):
+                    # 倒序遍历（最新的先） - Iterate all until limit reached or run out
+                    for i in range(folder_total - 1, -1, -1):
                         if not self.is_running:
                             break
                         

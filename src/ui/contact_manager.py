@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import (
     QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView,
     QFrame, QScrollArea, QMenu, QMessageBox, QDialog,
     QFormLayout, QComboBox, QTextEdit, QCheckBox, QAbstractItemView,
-    QFileDialog, QToolButton
+    QFileDialog, QToolButton, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QBrush, QAction
@@ -197,6 +197,7 @@ class ContactManagerWidget(QWidget):
         self.db = ContactDatabase()
         self.current_group_id = None  # None = 全部
         self.selected_contacts = []
+        self.last_checked_row = -1  # For Shift-Click range selection
         # 默认深色主题
 
         self.setup_ui()
@@ -523,8 +524,11 @@ class ContactManagerWidget(QWidget):
         for row, c in enumerate(contacts):
             # 复选框
             cb = QCheckBox()
+            cb = QCheckBox()
             cb.setProperty('contact_id', c['id'])
             cb.stateChanged.connect(self.on_selection_changed)
+            # Add click handler for Shift-Select
+            cb.clicked.connect(lambda checked, r=row: self.on_checkbox_clicked(checked, r))
             # 使用系统原生复选框样式（最好看！）
             
             cb_widget = QWidget()
@@ -646,6 +650,36 @@ class ContactManagerWidget(QWidget):
         """搜索"""
         self.load_contacts()
     
+    def on_checkbox_clicked(self, checked: bool, row: int):
+        """Handle Shift-Click for range selection"""
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.KeyboardModifier.ShiftModifier and self.last_checked_row != -1:
+            start = min(self.last_checked_row, row)
+            end = max(self.last_checked_row, row)
+            
+            # Temporarily block signals to avoid excessive updates if many rows
+            # But on_selection_changed updates UI totals, so we might want it. 
+            # Let's see... if 1000 rows, 1000 updates might be slow.
+            # Optimize: Update selection once at the end?
+            # But specific widgets need to be checked.
+            
+            for i in range(start, end + 1):
+                if i == row: continue # Already clicked
+                
+                # Get checkbox widget
+                widget = self.table.cellWidget(i, 0)
+                if widget:
+                    # widget is the container, find children layout items?
+                    # The usage in load_contacts is: self.table.setCellWidget(row, 0, cb_widget)
+                    # cb_widget layout has 1 item: cb
+                    # Let's find child QCheckBox
+                    cb = widget.findChild(QCheckBox)
+                    if cb and cb.isChecked() != checked:
+                        cb.setChecked(checked)
+        
+        # Update last checked row
+        self.last_checked_row = row
+
     def on_selection_changed(self):
         """选择变化"""
         self.update_selection_state()
@@ -851,9 +885,12 @@ class ContactManagerWidget(QWidget):
         self.db.copy_contacts_to_group(self.selected_contacts, group_id)
         self.load_data()
         
-        # 提示用户
-        count = len(self.selected_contacts)
-        QMessageBox.information(self, "操作成功", f"已将 {count} 个联系人复制到「{group_name}」")
+        # 提示用户 - 用户请求不弹窗
+        # count = len(self.selected_contacts)
+        # QMessageBox.information(self, "操作成功", f"已将 {count} 个联系人复制到「{group_name}」")
+        
+        # Reset selection or give visual feedback internally if needed
+        self.copy_combo.setCurrentIndex(0)
     
     def batch_delete(self):
         """批量删除 - 提供两个选项"""

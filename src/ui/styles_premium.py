@@ -185,28 +185,42 @@ QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus {
 }
 
 /* PremiumSpinBox Custom Styling */
-QLineEdit#premiumSpinBoxDisplay {
+/* Prefix Label (Leftmost) */
+QLabel#premiumSpinBoxPrefix {
     background-color: #171925;
     border: 1px solid #2D2F44;
     border-right: none;
     border-top-left-radius: 12px;
     border-bottom-left-radius: 12px;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    padding: 11px 10px; /* Match Suffix vertical padding */
-    padding-right: 0px;
+    padding: 12px 0 12px 12px; /* Left padding for visual balance */
+    color: #9CA3AF;
+    font-weight: 600;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* Value Input (Middle) */
+QLineEdit#premiumSpinBoxDisplay {
+    background-color: #171925;
+    border: 1px solid #2D2F44;
+    border-left: none; /* Connect to Prefix */
+    border-right: none; /* Connect to Suffix */
+    border-radius: 0; /* No radius */
+    padding: 12px 0; /* Tight horizontal padding */
     font-weight: 600;
 }
 
+/* Suffix Label (Right of Input) */
 QLabel#premiumSpinBoxSuffix {
     background-color: #171925;
     border-top: 1px solid #2D2F44;
     border-bottom: 1px solid #2D2F44;
-    padding: 12px 10px 12px 0; /* Match LineEdit vertical padding */
+    border-left: none; /* Connect to Input */
+    padding: 12px 10px 12px 0; /* Right padding */
     color: #9CA3AF;
     font-weight: 600;
     font-size: 14px;
-    margin-right: 0px; /* Connect to buttons */
+    margin-right: 0px;
 }
 
 /* Stacked Vertical Buttons */
@@ -220,10 +234,10 @@ QPushButton#premiumSpinBoxBtnPlus {
     margin: 0;
     min-width: 28px;
     max-width: 28px;
-    min-height: 20px;
-    max-height: 20px;
+    min-height: 21px;
+    max-height: 21px;
     color: #FFFFFF;
-    font-size: 16px;
+    font-size: 10px; /* Smaller font for solid triangles */
     font-weight: bold;
     text-align: center;
     padding: 0;
@@ -232,7 +246,7 @@ QPushButton#premiumSpinBoxBtnPlus {
 QPushButton#premiumSpinBoxBtnMinus {
     background-color: #3E4055;
     border: 1px solid #4E5066;
-    border-top: none; /* Merge borders */
+    /* border-top: none; Removed to show double border effect as requested */
     border-top-left-radius: 0px; /* Sharp joint */
     border-top-right-radius: 0px; /* Sharp joint */
     border-bottom-left-radius: 0px;
@@ -240,10 +254,10 @@ QPushButton#premiumSpinBoxBtnMinus {
     margin: 0;
     min-width: 28px;
     max-width: 28px;
-    min-height: 20px;
-    max-height: 20px;
+    min-height: 23px; /* Increased by 1px to fix bottom alignment */
+    max-height: 23px;
     color: #FFFFFF;
-    font-size: 16px;
+    font-size: 10px; /* Smaller font for solid triangles */
     font-weight: bold;
     text-align: center;
     padding: 0;
@@ -298,16 +312,28 @@ QPushButton#secondaryButton:hover {
 }
 
 QPushButton#dangerButton {
-    background-color: rgba(231, 76, 60, 0.15);
+    background-color: rgba(231, 76, 60, 0.1);
     color: #FF6B6B;
-    border: 1px solid rgba(231, 76, 60, 0.3);
+    border: 1px solid transparent; /* No border normally */
     border-radius: 12px;
-    padding: 8px 16px;
+    padding: 10px 16px;
+    font-weight: 600;
 }
 
 QPushButton#dangerButton:hover {
-    background-color: rgba(231, 76, 60, 0.25);
-    border-color: #FF6B6B;
+    background-color: rgba(231, 76, 60, 0.2);
+    border: 1px solid #EF4444; /* Show red border on hover */
+    color: #FF4444;
+}
+
+QPushButton#dangerButton:pressed {
+    background-color: rgba(231, 76, 60, 0.3);
+}
+
+QPushButton#dangerButton:disabled {
+    background-color: rgba(231, 76, 60, 0.05);
+    color: #664444;
+    border: 1px solid transparent;
 }
 
 /* ============================================

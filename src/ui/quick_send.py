@@ -4,7 +4,7 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QTextEdit, QComboBox, QFrame, QCheckBox,
-    QScrollArea, QWidget, QMessageBox, QFileDialog, QProgressBar
+    QScrollArea, QWidget, QMessageBox, QFileDialog, QProgressBar, QApplication
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread
 from PyQt6.QtGui import QFont
@@ -275,6 +275,7 @@ class ContactSelectDialog(QDialog):
         self.db = ContactDatabase()
         self.selected_contacts = []
         self.selected_groups = set()
+        self.last_checked_index = -1  # For Shift-Click range selection
         
         self.setWindowTitle("选择联系人")
         self.setMinimumSize(500, 550)
@@ -474,6 +475,8 @@ class ContactSelectDialog(QDialog):
                 }
             """)
             cb.stateChanged.connect(self.on_contact_changed)
+            # Add click handler for Shift-Select
+            cb.clicked.connect(lambda checked, idx=len(self.contact_checkboxes): self.on_checkbox_clicked(checked, idx))
             
             # 插入到 stretch 之前
             self.contact_layout.insertWidget(self.contact_layout.count() - 1, cb)
@@ -499,6 +502,26 @@ class ContactSelectDialog(QDialog):
         
         self.update_count()
     
+    def on_checkbox_clicked(self, checked: bool, index: int):
+        """Handle Shift-Click for range selection"""
+        modifiers = QApplication.keyboardModifiers()
+        if modifiers == Qt.KeyboardModifier.ShiftModifier and self.last_checked_index != -1:
+            start = min(self.last_checked_index, index)
+            end = max(self.last_checked_index, index)
+            
+            for i in range(start, end + 1):
+                if i == index: continue
+                
+                # Get widget from layout (index i)
+                item = self.contact_layout.itemAt(i)
+                if item and item.widget():
+                    cb = item.widget()
+                    # Only affect visible items (respect search filter)
+                    if isinstance(cb, QCheckBox) and cb.isVisible() and cb.isChecked() != checked:
+                        cb.setChecked(checked)
+                        
+        self.last_checked_index = index
+
     def on_contact_changed(self):
         """联系人选择变化"""
         self.update_count()

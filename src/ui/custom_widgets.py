@@ -12,6 +12,7 @@ class PremiumSpinBox(QWidget):
         self._min = 0
         self._max = 9999999 # Effectively no limit by default
         self._step = 1
+        self._prefix = ""
         self._suffix = ""
 
         self.init_ui()
@@ -23,6 +24,10 @@ class PremiumSpinBox(QWidget):
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0) # No gap for capsule look
+
+        # Prefix Label
+        self.prefix_label = QLabel("")
+        self.prefix_label.setObjectName("premiumSpinBoxPrefix")
 
         # Value Input
         self.display = QLineEdit()
@@ -41,12 +46,12 @@ class PremiumSpinBox(QWidget):
         btn_layout.setSpacing(0) 
         
         # Buttons (Arrows)
-        self.btn_plus = QPushButton("+") # Up arrow
+        self.btn_plus = QPushButton("▲") # Solid Up Triangle
         self.btn_plus.setObjectName("premiumSpinBoxBtnPlus")
         self.btn_plus.setFixedSize(28, 20) 
         self.btn_plus.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        self.btn_minus = QPushButton("-") # Down arrow
+        self.btn_minus = QPushButton("▼") # Solid Down Triangle
         self.btn_minus.setObjectName("premiumSpinBoxBtnMinus")
         self.btn_minus.setFixedSize(28, 20)
         self.btn_minus.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -54,6 +59,7 @@ class PremiumSpinBox(QWidget):
         btn_layout.addWidget(self.btn_plus)
         btn_layout.addWidget(self.btn_minus)
 
+        layout.addWidget(self.prefix_label)
         layout.addWidget(self.display, 1) # Give expansion to input
         layout.addWidget(self.suffix_label)
         layout.addLayout(btn_layout)
@@ -72,6 +78,7 @@ class PremiumSpinBox(QWidget):
 
     def _update_display(self):
         self.display.setText(str(self._value))
+        self.prefix_label.setText(self._prefix)
         self.suffix_label.setText(self._suffix)
 
     def value(self):
@@ -89,12 +96,16 @@ class PremiumSpinBox(QWidget):
         self._max = max_val
         self.setValue(self._value)
 
+    def setPrefix(self, prefix):
+        self._prefix = prefix
+        self._update_display()
+
     def setSuffix(self, suffix):
         self._suffix = suffix
         self._update_display()
 
     def setSingleStep(self, step):
-        self._step = step
+        self._step = step # Add this to match QSpinBox API if needed
 
     def increment(self):
         self._sync_text_to_value()
@@ -127,3 +138,57 @@ class PremiumSpinBox(QWidget):
         self.display.setMinimumWidth(0)
         self.setFixedWidth(width) # FORCE fixed width on the container 
 
+
+from PyQt6.QtWidgets import QDialog, QTextEdit, QVBoxLayout, QDialogButtonBox
+
+class EmailEditorDialog(QDialog):
+    """Expanded Email Body Editor Dialog"""
+    def __init__(self, initial_text="", parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("📝 编辑邮件正文")
+        self.setMinimumSize(800, 600)
+        
+        layout = QVBoxLayout(self)
+        
+        # Editor
+        self.editor = QTextEdit()
+        self.editor.setPlainText(initial_text)
+        self.editor.setStyleSheet("""
+            QTextEdit {
+                font-size: 14px;
+                line-height: 1.5;
+                padding: 12px;
+                border: 1px solid #3D3D55;
+                border-radius: 8px;
+                background-color: #1F2133;
+                color: #FFFFFF;
+            }
+        """)
+        layout.addWidget(self.editor)
+        
+        # Buttons
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        
+        # Style buttons
+        buttons.setStyleSheet("""
+            QPushButton {
+                padding: 6px 16px;
+                border-radius: 4px;
+            }
+        """)
+        layout.addWidget(buttons)
+        
+        # Style Dialog Background
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #242738;
+                color: #FFFFFF;
+            }
+        """)
+
+    def get_text(self):
+        return self.editor.toPlainText()

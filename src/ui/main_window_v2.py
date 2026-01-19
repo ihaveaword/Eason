@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QSpinBox, QFormLayout, QFrame, QCheckBox, QComboBox,
     QScrollArea, QSizePolicy, QGridLayout, QDialog
 )
-from PyQt6.QtCore import QSettings, Qt, QTimer
+from PyQt6.QtCore import QSettings, Qt, QTimer, QRectF
 from PyQt6.QtGui import QFont, QPainter, QColor, QBrush, QPen
 from ..core import EmailSender, ContactFetcher, ConfigManager
 from ..utils import read_contacts
@@ -110,9 +110,6 @@ class BarChart(QWidget):
                            Qt.AlignmentFlag.AlignCenter, str(value))
             
             # 绘制标签
-            painter.setPen(QPen(QColor("#9CA3AF")))
-            font.setPointSize(9)
-            font.setBold(False)
             painter.setFont(font)
             
             # 截断过长的标签
@@ -121,6 +118,96 @@ class BarChart(QWidget):
                            Qt.AlignmentFlag.AlignCenter, display_label)
             
             x += bar_width + bar_spacing
+
+
+class PieChart(QWidget):
+    """饼状图组件 (Donut style)"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.data = {}  # {label: value}
+        self.setMinimumHeight(220) # Slightly taller for legend
+        self.colors = [
+            QColor("#6C5CE7"),  # Theme Primary
+            QColor("#A371F7"),  # Purple Light
+            QColor("#10B981"),  # Emerald
+            QColor("#F59E0B"),  # Amber
+            QColor("#EF4444"),  # Red
+            QColor("#8B5CF6"),  # Violet
+            QColor("#EC4899"),  # Pink
+            QColor("#6366F1"),  # Indigo
+        ]
+    
+    def set_data(self, data: dict):
+        self.data = data
+        self.update()
+    
+    def paintEvent(self, event):
+        if not self.data:
+            return
+        
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        
+        width = self.width()
+        height = self.height()
+        
+        # Calculate total
+        total = sum(self.data.values())
+        if total == 0:
+            return
+            
+        # Layout: Chart Left, Legend Right
+        chart_size = min(width * 0.5, height - 20)
+        chart_rect = QRectF(20, (height - chart_size) / 2, chart_size, chart_size)
+        
+        # Draw Pie/Donut
+        start_angle = 90 * 16 # Start from top
+        
+        items = list(self.data.items())[:8] # Top 8
+        other_val = total - sum(v for k, v in items)
+        if other_val > 0:
+            items.append(("其他", other_val))
+            
+        used_colors = []
+        
+        for i, (label, value) in enumerate(items):
+            span_angle = -(value / total) * 360 * 16
+            color = self.colors[i % len(self.colors)]
+            used_colors.append(color)
+            
+            painter.setBrush(QBrush(color))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawPie(chart_rect, int(start_angle), int(span_angle))
+            
+            start_angle += span_angle
+            
+        # Draw Center Hole (Donut)
+        hole_size = chart_size * 0.6
+        hole_rect = QRectF(
+            chart_rect.center().x() - hole_size/2,
+            chart_rect.center().y() - hole_size/2,
+            hole_size, hole_size
+        )
+        painter.setBrush(QBrush(QColor("#1E202E"))) # Match card background
+        painter.drawEllipse(hole_rect)
+        
+        # Draw Legend
+        legend_x = 20 + chart_size + 40
+        legend_y = (height - len(items) * 24) / 2
+        
+        painter.setFont(QFont("Arial", 12))
+        
+        for i, (label, value) in enumerate(items):
+            # Color dot
+            dot_rect = QRectF(legend_x, legend_y + i*24 + 4, 12, 12)
+            painter.setBrush(QBrush(used_colors[i]))
+            painter.drawEllipse(dot_rect)
+            
+            # Text
+            painter.setPen(QPen(QColor("#E0E0E0")))
+            percent = (value / total) * 100
+            text = f"{label} ({percent:.1f}%)"
+            painter.drawText(int(legend_x + 20), int(legend_y + i*24 + 14), text)
 
 
 class CodeLogWidget(QTextEdit):
@@ -470,13 +557,14 @@ class MainWindow(QMainWindow):
         page.setObjectName("contentArea")
         
         scroll = QScrollArea()
+        scroll.setObjectName("collectScrollArea")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setStyleSheet("QScrollArea#collectScrollArea { background: transparent; border: none; }")
         
         scroll_content = QWidget()
         scroll_content.setObjectName("collectionScrollContent")
-        scroll_content.setStyleSheet("#collectionScrollContent { background: transparent; }")
+        scroll_content.setStyleSheet("QWidget#collectionScrollContent { background: transparent; }")
         layout = QVBoxLayout(scroll_content)
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(20)
@@ -643,7 +731,33 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(log_card)
         
-        # ===== 统计图表卡片 =====
+        # ===== 结果预览卡片 (Priority High - Moved Up) =====
+        preview_card = QFrame()
+        preview_card.setObjectName("contentCard")
+        preview_layout = QVBoxLayout(preview_card)
+        preview_layout.setContentsMargins(24, 24, 24, 24)
+        preview_layout.setSpacing(12)
+        
+        preview_header = QHBoxLayout()
+        preview_title = QLabel("📋 采集结果")
+        preview_title.setObjectName("sectionTitle")
+        preview_header.addWidget(preview_title)
+        
+        self.result_count_label = QLabel("")
+        self.result_count_label.setObjectName("tipLabel")
+        preview_header.addWidget(self.result_count_label)
+        preview_header.addStretch()
+        preview_layout.addLayout(preview_header)
+        
+        self.fetch_preview = QTextEdit()
+        self.fetch_preview.setPlaceholderText("采集到的联系人将显示在这里...\n\n格式：邮箱地址 | 姓名 | 互动次数 | 最后联系时间")
+        self.fetch_preview.setReadOnly(True)
+        self.fetch_preview.setMinimumHeight(200) # Make it large as requested
+        preview_layout.addWidget(self.fetch_preview)
+        
+        layout.addWidget(preview_card, 2) # Higher stretch to make it big
+        
+        # ===== 统计图表卡片 (Moved Down) =====
         stats_card = QFrame()
         stats_card.setObjectName("contentCard")
         stats_layout = QVBoxLayout(stats_card)
@@ -673,12 +787,12 @@ class MainWindow(QMainWindow):
         stats_row.addStretch()
         stats_layout.addLayout(stats_row)
         
-        # 域名分布图表
+        # 域名分布图表 (Changed to PieChart)
         chart_label = QLabel("📧 域名分布")
         chart_label.setObjectName("fieldLabel")
         stats_layout.addWidget(chart_label)
         
-        self.domain_chart = BarChart()
+        self.domain_chart = PieChart() # PIE CHART
         stats_layout.addWidget(self.domain_chart)
         
         # 隐藏的文本标签（用于无数据时）
@@ -687,32 +801,7 @@ class MainWindow(QMainWindow):
         self.domain_stats_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         stats_layout.addWidget(self.domain_stats_label)
         
-        layout.addWidget(stats_card)
-        
-        # ===== 结果预览卡片 =====
-        preview_card = QFrame()
-        preview_card.setObjectName("contentCard")
-        preview_layout = QVBoxLayout(preview_card)
-        preview_layout.setContentsMargins(24, 24, 24, 24)
-        preview_layout.setSpacing(12)
-        
-        preview_header = QHBoxLayout()
-        preview_title = QLabel("📋 采集结果")
-        preview_title.setObjectName("sectionTitle")
-        preview_header.addWidget(preview_title)
-        
-        self.result_count_label = QLabel("")
-        self.result_count_label.setObjectName("tipLabel")
-        preview_header.addWidget(self.result_count_label)
-        preview_header.addStretch()
-        preview_layout.addLayout(preview_header)
-        
-        self.fetch_preview = QTextEdit()
-        self.fetch_preview.setPlaceholderText("采集到的联系人将显示在这里...\n\n格式：邮箱地址 | 姓名 | 互动次数 | 最后联系时间")
-        self.fetch_preview.setReadOnly(True)
-        preview_layout.addWidget(self.fetch_preview)
-        
-        layout.addWidget(preview_card, 1)
+        layout.addWidget(stats_card, 1) # Standard stretch
         
         scroll.setWidget(scroll_content)
         
@@ -748,12 +837,14 @@ class MainWindow(QMainWindow):
         page.setObjectName("contentArea")
         
         scroll = QScrollArea()
+        scroll.setObjectName("sendScrollArea")
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setStyleSheet("QScrollArea#sendScrollArea { background: transparent; border: none; }")
         
         scroll_content = QWidget()
-        scroll_content.setStyleSheet("background: transparent;")
+        scroll_content.setObjectName("sendScrollContent")
+        scroll_content.setStyleSheet("QWidget#sendScrollContent { background: transparent; }")
         layout = QVBoxLayout(scroll_content)
         layout.setContentsMargins(32, 32, 32, 32)
         layout.setSpacing(24)
@@ -865,12 +956,8 @@ class MainWindow(QMainWindow):
         label3.setObjectName("fieldLabel")
         label3.setMinimumWidth(90)
         
-        self.use_template_checkbox = QCheckBox("使用HTML模板")
-        self.use_template_checkbox.stateChanged.connect(self.toggle_template_mode)
-        
         self.template_combo = QComboBox()
-        self.template_combo.setEnabled(False)
-        self.template_combo.addItem("选择模板...", "")
+        self.template_combo.addItem("(纯文本 - 不使用模板)", "") # Default option
         try:
             from ..templates import TemplateEngine
             engine = TemplateEngine()
@@ -879,6 +966,8 @@ class MainWindow(QMainWindow):
                 self.template_combo.addItem(f"{tpl['display_name']}", tpl['name'])
         except Exception:
             pass
+        
+        self.template_combo.currentIndexChanged.connect(self.on_template_changed)
         
         self.btn_config_vars = QPushButton("⚙️ 配置")
         self.btn_config_vars.setObjectName("secondaryButton")
@@ -891,7 +980,6 @@ class MainWindow(QMainWindow):
         self.btn_preview.clicked.connect(self.preview_template)
         
         row3.addWidget(label3)
-        row3.addWidget(self.use_template_checkbox)
         row3.addWidget(self.template_combo, 1)
         row3.addWidget(self.btn_config_vars)
         row3.addWidget(self.btn_preview)
@@ -902,12 +990,40 @@ class MainWindow(QMainWindow):
         # 邮件正文
         row4 = QVBoxLayout()
         row4.setSpacing(8)
+        
+        body_header = QHBoxLayout()
         label4 = QLabel("邮件正文")
         label4.setObjectName("fieldLabel")
+        
+        from PyQt6.QtWidgets import QToolButton
+        self.btn_expand_editor = QToolButton()
+        self.btn_expand_editor.setText("📝 放大编辑")
+        self.btn_expand_editor.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_expand_editor.setStyleSheet("""
+            QToolButton {
+                border: none;
+                background: transparent;
+                color: #818CF8;
+                font-weight: bold;
+                padding: 4px;
+            }
+            QToolButton:hover {
+                color: #A5B4FC;
+                background: rgba(129, 140, 248, 0.1);
+                border-radius: 4px;
+            }
+        """)
+        self.btn_expand_editor.clicked.connect(self.open_body_editor)
+        
+        body_header.addWidget(label4)
+        body_header.addStretch()
+        body_header.addWidget(self.btn_expand_editor)
+        
         self.body_input = QTextEdit()
         self.body_input.setPlaceholderText("输入邮件正文内容...")
-        self.body_input.setMaximumHeight(120)
-        row4.addWidget(label4)
+        self.body_input.setMaximumHeight(200)
+        
+        row4.addLayout(body_header)
         row4.addWidget(self.body_input)
         card_layout.addLayout(row4)
         
@@ -943,15 +1059,16 @@ class MainWindow(QMainWindow):
         self.batch_size_spin = PremiumSpinBox()
         self.batch_size_spin.setRange(1, 100)
         self.batch_size_spin.setValue(10)
-        # self.batch_size_spin.setSuffix(" 封") # PremiumSpinBox doesn't support prefix logic yet, just suffix
+        self.batch_size_spin.setPrefix("每批 ")
         self.batch_size_spin.setSuffix(" 封") 
-        self.batch_size_spin.setFixedWidth(120)
+        self.batch_size_spin.setFixedWidth(150)
         
         self.batch_interval_spin = PremiumSpinBox()
         self.batch_interval_spin.setRange(10, 300)
         self.batch_interval_spin.setValue(20)
+        self.batch_interval_spin.setPrefix("间隔 ")
         self.batch_interval_spin.setSuffix(" 秒")
-        self.batch_interval_spin.setFixedWidth(120)
+        self.batch_interval_spin.setFixedWidth(150)
         
         row6.addWidget(label6)
         row6.addWidget(self.batch_size_spin)
@@ -974,7 +1091,8 @@ class MainWindow(QMainWindow):
         self.btn_stop_send.setObjectName("dangerButton")
         self.btn_stop_send.setMinimumHeight(44)
         self.btn_stop_send.clicked.connect(self.stop_send)
-        self.btn_stop_send.setEnabled(False)
+        self.btn_stop_send.clicked.connect(self.stop_send)
+        # self.btn_stop_send.setEnabled(False)  # User wants to click it for fun
         
         btn_row.addWidget(self.btn_send)
         btn_row.addWidget(self.btn_stop_send)
@@ -1609,12 +1727,19 @@ class MainWindow(QMainWindow):
             self.update_dashboard()
             self.log(f"✅ 已加载 {len(contacts)} 个联系人")
 
-    def toggle_template_mode(self, state):
-        enabled = state == Qt.CheckState.Checked.value
-        self.template_combo.setEnabled(enabled)
-        self.btn_config_vars.setEnabled(enabled)
-        self.btn_preview.setEnabled(enabled)
-        self.body_input.setEnabled(not enabled)
+    def on_template_changed(self, index):
+        """模板选择变更"""
+        template_name = self.template_combo.currentData()
+        is_template_mode = bool(template_name)
+        
+        self.btn_config_vars.setEnabled(is_template_mode)
+        self.btn_preview.setEnabled(is_template_mode)
+        self.body_input.setEnabled(not is_template_mode)
+        
+        if is_template_mode:
+             self.body_input.setPlaceholderText("⚠️ 已选择HTML模板，正文输入框将被忽略（请点击「配置」按钮修改变量）")
+        else:
+             self.body_input.setPlaceholderText("输入邮件正文内容...")
 
     def config_template_variables(self):
         from .variable_config_dialog import VariableConfigDialog
@@ -1622,10 +1747,23 @@ class MainWindow(QMainWindow):
         if not template_name:
             QMessageBox.warning(self, "⚠️ 提示", "请先选择一个模板")
             return
-        dialog = VariableConfigDialog(template_name, self.template_vars, self)
+        if not isinstance(self.template_vars, dict):
+             self.template_vars = {}
+        dialog = VariableConfigDialog(self.template_vars, [], self)
         if dialog.exec():
             self.template_vars = dialog.get_variables()
             self.log(f"✅ 模板变量已配置: {len(self.template_vars)} 个")
+
+    def open_body_editor(self):
+        """打开放大版正文编辑器"""
+        from .custom_widgets import EmailEditorDialog
+        
+        current_text = self.body_input.toPlainText()
+        dialog = EmailEditorDialog(current_text, self)
+        
+        if dialog.exec():
+            new_text = dialog.get_text()
+            self.body_input.setPlainText(new_text)
 
     def preview_template(self):
         from .template_preview import TemplatePreviewDialog
@@ -1669,11 +1807,8 @@ class MainWindow(QMainWindow):
         body = ""
         html_body = None
         
-        if self.use_template_checkbox.isChecked():
-            template_name = self.template_combo.currentData()
-            if not template_name:
-                QMessageBox.warning(self, "⚠️ 提示", "请选择一个邮件模板")
-                return
+        template_name = self.template_combo.currentData()
+        if template_name: # Use template
             try:
                 from ..templates import TemplateEngine
                 engine = TemplateEngine()
@@ -1681,7 +1816,7 @@ class MainWindow(QMainWindow):
             except Exception as e:
                 QMessageBox.critical(self, "❌ 模板错误", f"渲染模板失败:\n{str(e)}")
                 return
-        else:
+        else: # Plain text
             body = self.body_input.toPlainText().strip()
             if not body:
                 QMessageBox.warning(self, "⚠️ 缺少正文", "请填写邮件正文")
@@ -1719,6 +1854,7 @@ class MainWindow(QMainWindow):
         self.send_thread.error.connect(self.on_send_error)
         self.send_thread.finished.connect(self.on_send_finished)
         self.send_thread.batch_done.connect(self.on_batch_done)
+        self.send_thread.wait_progress.connect(self.on_wait_progress)
         self.send_thread.start()
 
     def stop_send(self):
@@ -1752,8 +1888,14 @@ class MainWindow(QMainWindow):
         self.dashboard_progress_bar.setVisible(False)
 
     def on_batch_done(self, batch_num: int, wait_time: int):
+        """批次完成，等待中"""
         self.log(f"📦 第 {batch_num} 批完成，等待 {wait_time} 秒后继续...", 'send')
         self.progress_bar.setFormat(f"等待中... {wait_time}s")
+        
+    def on_wait_progress(self, remaining: int):
+        """倒计时更新"""
+        self.progress_bar.setFormat(f"⏳ 等待中... {remaining}s")
+        self.send_status_label.setText(f"⏳ 等待下一批 {remaining}s")
 
     def on_send_finished(self):
         self.btn_send.setEnabled(True)
