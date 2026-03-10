@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QLabel, QLineEdit, QPushButton, QTextEdit, 
     QStackedWidget, QProgressBar, QFileDialog, QMessageBox, 
     QSpinBox, QFormLayout, QFrame, QCheckBox, QComboBox,
-    QScrollArea, QSizePolicy, QGridLayout, QDialog
+    QScrollArea, QSizePolicy, QGridLayout, QDialog, QListWidget
 )
 from PyQt6.QtCore import QSettings, Qt, QTimer, QRectF
 from PyQt6.QtGui import QFont, QPainter, QColor, QBrush, QPen
@@ -1027,26 +1027,57 @@ class MainWindow(QMainWindow):
         row4.addWidget(self.body_input)
         card_layout.addLayout(row4)
         
-        # 附件
-        row5 = QHBoxLayout()
-        row5.setSpacing(12)
+        # 附件（支持多附件）
+        self.attachment_paths = []
+        
+        attach_header = QHBoxLayout()
+        attach_header.setSpacing(12)
         label5 = QLabel("添加附件")
         label5.setObjectName("fieldLabel")
         label5.setMinimumWidth(90)
-        self.attach_path_input = QLineEdit()
-        self.attach_path_input.setReadOnly(True)
-        self.attach_path_input.setPlaceholderText("可选：添加图片或PDF附件")
-        btn_attach = QPushButton("📎 选择")
+        
+        btn_attach = QPushButton("📎 添加文件")
         btn_attach.setObjectName("secondaryButton")
         btn_attach.clicked.connect(self.select_attachment)
-        btn_clear = QPushButton("🗑 清除")
-        btn_clear.setObjectName("secondaryButton")
-        btn_clear.clicked.connect(lambda: self.attach_path_input.clear())
-        row5.addWidget(label5)
-        row5.addWidget(self.attach_path_input, 1)
-        row5.addWidget(btn_attach)
-        row5.addWidget(btn_clear)
-        card_layout.addLayout(row5)
+        btn_remove = QPushButton("➖ 移除选中")
+        btn_remove.setObjectName("secondaryButton")
+        btn_remove.clicked.connect(self.remove_selected_attachment)
+        btn_clear_attach = QPushButton("🗑 全部清除")
+        btn_clear_attach.setObjectName("secondaryButton")
+        btn_clear_attach.clicked.connect(self.clear_all_attachments)
+        
+        attach_header.addWidget(label5)
+        attach_header.addStretch()
+        attach_header.addWidget(btn_attach)
+        attach_header.addWidget(btn_remove)
+        attach_header.addWidget(btn_clear_attach)
+        card_layout.addLayout(attach_header)
+        
+        self.attach_list_widget = QListWidget()
+        self.attach_list_widget.setMaximumHeight(90)
+        self.attach_list_widget.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        self.attach_list_widget.setStyleSheet("""
+            QListWidget {
+                background-color: #1F2133;
+                border: 1px solid #3D3D55;
+                border-radius: 8px;
+                color: #D1D5DB;
+                font-size: 12px;
+                padding: 4px;
+            }
+            QListWidget::item {
+                padding: 3px 6px;
+            }
+            QListWidget::item:selected {
+                background-color: rgba(79, 70, 229, 0.3);
+            }
+        """)
+        self.attach_list_widget.setVisible(False)  # 无附件时隐藏
+        card_layout.addWidget(self.attach_list_widget)
+        
+        # 隐藏的兼容字段
+        self.attach_path_input = QLineEdit()
+        self.attach_path_input.setVisible(False)
         
         # 发送设置
         row6 = QHBoxLayout()
@@ -1291,7 +1322,14 @@ class MainWindow(QMainWindow):
         self.contact_path_input.setText(self.config_manager.settings.value("last_contact_file", ""))
         self.subject_input.setText(self.config_manager.settings.value("last_subject", ""))
         self.body_input.setPlainText(self.config_manager.settings.value("last_body", ""))
-        self.attach_path_input.setText(self.config_manager.settings.value("last_attachment", ""))
+        # 加载多附件
+        import json as _json
+        saved_attachments = self.config_manager.settings.value("last_attachments", "[]")
+        try:
+            self.attachment_paths = _json.loads(saved_attachments) if saved_attachments else []
+        except Exception:
+            self.attachment_paths = []
+        self._refresh_attach_list()
         
         # 加载邮箱类型
         saved_type = self.config_manager.settings.value("email_type", "auto")
@@ -1308,7 +1346,8 @@ class MainWindow(QMainWindow):
         self.config_manager.settings.setValue("last_contact_file", self.contact_path_input.text())
         self.config_manager.settings.setValue("last_subject", self.subject_input.text())
         self.config_manager.settings.setValue("last_body", self.body_input.toPlainText())
-        self.config_manager.settings.setValue("last_attachment", self.attach_path_input.text())
+        import json as _json
+        self.config_manager.settings.setValue("last_attachments", _json.dumps(self.attachment_paths))
 
     def load_stats(self):
         self.total_sent = self.config_manager.settings.value('stats/total_sent', 0, type=int)
@@ -1782,9 +1821,35 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "❌ 预览失败", f"模板预览失败:\n\n{str(e)}")
 
     def select_attachment(self):
-        path, _ = QFileDialog.getOpenFileName(self, "选择附件", "", "图片和PDF (*.png *.jpg *.jpeg *.gif *.pdf);;所有文件 (*)")
-        if path:
-            self.attach_path_input.setText(path)
+        paths, _ = QFileDialog.getOpenFileNames(self, "选择附件（可多选）", "", "图片和PDF (*.png *.jpg *.jpeg *.gif *.pdf);;Office文件 (*.doc *.docx *.xls *.xlsx *.ppt *.pptx);;所有文件 (*)")
+        if paths:
+            for p in paths:
+                if p not in self.attachment_paths:
+                    self.attachment_paths.append(p)
+            self._refresh_attach_list()
+
+    def remove_selected_attachment(self):
+        """移除选中的附件"""
+        selected = self.attach_list_widget.selectedItems()
+        for item in selected:
+            row = self.attach_list_widget.row(item)
+            if 0 <= row < len(self.attachment_paths):
+                self.attachment_paths.pop(row)
+        self._refresh_attach_list()
+
+    def clear_all_attachments(self):
+        """清除所有附件"""
+        self.attachment_paths.clear()
+        self._refresh_attach_list()
+
+    def _refresh_attach_list(self):
+        """刷新附件列表显示"""
+        self.attach_list_widget.clear()
+        import os
+        for p in self.attachment_paths:
+            filename = os.path.basename(p)
+            self.attach_list_widget.addItem(f"📎 {filename}")
+        self.attach_list_widget.setVisible(len(self.attachment_paths) > 0)
 
     def start_send(self):
         user = self.email_input.text().strip()
@@ -1822,7 +1887,7 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "⚠️ 缺少正文", "请填写邮件正文")
                 return
 
-        attachment = self.attach_path_input.text().strip() or None
+        attachments = self.attachment_paths if self.attachment_paths else None
 
         self.save_config()
         
@@ -1831,6 +1896,8 @@ class MainWindow(QMainWindow):
         self.send_status_label.setText("🟢 发送中...")
         self.log(f"📧 开始发送邮件，共 {len(self.contacts_data)} 位收件人", 'send')
         self.log(f"📦 批次设置: 每批 {self.batch_size_spin.value()} 封，间隔 {self.batch_interval_spin.value()} 秒", 'send')
+        if attachments:
+            self.log(f"📎 附件: {len(attachments)} 个文件", 'send')
         
         self.btn_send.setEnabled(False)
         self.btn_stop_send.setEnabled(True)
@@ -1845,7 +1912,7 @@ class MainWindow(QMainWindow):
         self.dashboard_progress_bar.setValue(0)
 
         self.send_thread = EmailSender(
-            user, pwd, self.contacts_data, subject, body, attachment,
+            user, pwd, self.contacts_data, subject, body, attachments,
             self.batch_size_spin.value(), self.batch_interval_spin.value(),
             html_body
         )

@@ -26,7 +26,7 @@ class EmailSender(QThread):
     wait_progress = pyqtSignal(int)    # remaining_seconds
     
     def __init__(self, user: str, pwd: str, contacts: List[str], 
-                 subject: str, body: str, attachment: Optional[str] = None,
+                 subject: str, body: str, attachments: Optional[List[str]] = None,
                  batch_size: int = 10, interval: int = 5,
                  html_body: Optional[str] = None):
         super().__init__()
@@ -36,7 +36,7 @@ class EmailSender(QThread):
         self.contacts = contacts
         self.subject = subject
         self.body = body
-        self.attachment = attachment
+        self.attachments = attachments or []
         self.batch_size = batch_size
         self.interval = interval
         self.html_body = html_body
@@ -149,8 +149,9 @@ class EmailSender(QThread):
             msg.set_content(self.body)
         
         # 添加附件
-        if self.attachment and os.path.exists(self.attachment):
-            self._add_attachment(msg, self.attachment)
+        for attachment_path in self.attachments:
+            if attachment_path and os.path.exists(attachment_path):
+                self._add_attachment(msg, attachment_path)
         
         return msg
     
